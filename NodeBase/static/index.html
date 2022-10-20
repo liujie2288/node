@@ -14,15 +14,17 @@
     <div id="app">
       <h1>Todo List</h1>
       <ul>
-        <li v-for="(item, index) in items" :key="index">{{ item }}</li>
+        <li v-for="(item, index) in items" :key="index">
+          {{ item }} <button @click="removeApi(index)">X</button>
+        </li>
       </ul>
-      <input type="text" v-model="item" />
+      <input type="text" v-model="item" @keyup.enter="postApi" />
       <button @click="postApi">添加</button>
     </div>
 
     <!-- cdn 引用：Vue 和 Node -->
-    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="./vue.min.js"></script>
+    <script src="./axios.min.js"></script>
 
     <script>
       new Vue({
@@ -36,7 +38,7 @@
         created() {
           // 进入页面请求数据
           axios
-            .get("http://localhost:3000/getlist")
+            .get("http://localhost:7070/api/todolist/list")
             .then((res) => {
               console.log("\n【API - get 数据】");
               console.log(res);
@@ -50,11 +52,23 @@
           // 点击按钮提交数据
           postApi() {
             axios
-              .post("http://localhost:3000/save", {
-                item: this.item,
+              .post("http://localhost:7070/api/todolist/add", {
+                data: this.item,
               })
               .then((res) => {
                 console.log("\n【API - post 数据】");
+                console.log(res);
+                this.items = res.data;
+              })
+              .catch(function (err) {
+                console.log(err);
+              });
+          },
+          removeApi(id) {
+            axios
+              .delete("http://localhost:7070/api/todolist/remove/" + id)
+              .then((res) => {
+                console.log("\n【API - remove 数据】");
                 console.log(res);
                 this.items = res.data;
               })

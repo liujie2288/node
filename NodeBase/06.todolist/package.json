@@ -1,0 +1,15 @@
+{
+  "name": "06.todolist",
+  "version": "1.0.0",
+  "description": "使用 node 完成 todoList 服务。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "liujie",
+  "license": "ISC",
+  "dependencies": {
+    "path-to-regexp": "^6.2.1"
+  }
+}
