@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "bcrypt": "^5.1.0",
     "mysql": "^2.18.1",
     "path-to-regexp": "^6.2.1"
   }
