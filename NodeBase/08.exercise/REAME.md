@@ -219,7 +219,6 @@ function login(req, res) {
 | id          | int      | 11   | 主键 |
 | message     | varchar  | 255  |
 | user_id     | varchar  | 255  | 外键 |
-| user_name   | varchar  | 255  |
 | create_time | datetime |
 
 ### 功能实现

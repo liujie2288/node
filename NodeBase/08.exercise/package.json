@@ -1,7 +1,11 @@
 {
+  "scripts": {
+    "start": "serve web -l 60403 & node server/index.js"
+  },
   "dependencies": {
     "bcrypt": "^5.1.0",
     "mysql": "^2.18.1",
-    "path-to-regexp": "^6.2.1"
+    "path-to-regexp": "^6.2.1",
+    "serve": "^14.0.1"
   }
 }

@@ -9,16 +9,18 @@ function register(req, res) {
   const username = body.username; // 用户名
   const password = body.password; // 密码
 
+  console.log(body);
+
   res.setHeader("content-type", "aplication/json;charset=utf-8");
 
   // 2. 对数据进行校验
   let validateMsg = "";
   if (!username) {
     validateMsg = "注册失败，用户名为空。";
-  } else if (!password) {
-    validateMsg = "注册失败，密码为空！";
   } else if (username.length > 10) {
     validateMsg = "注册失败，用户名过长！";
+  } else if (!password) {
+    validateMsg = "注册失败，密码为空！";
   }
 
   if (validateMsg) {
@@ -26,7 +28,7 @@ function register(req, res) {
     res.end(
       JSON.stringify({
         data: null,
-        validateMsg,
+        message: validateMsg,
       })
     );
     return;

@@ -10,4 +10,14 @@ module.exports = [
     path: "/register",
     fn: controller.register.register,
   },
+  {
+    method: "GET",
+    path: "/messages",
+    fn: controller.message.getMessage,
+  },
+  {
+    method: "POST",
+    path: "/sendMessage",
+    fn: controller.message.sendMessage,
+  },
 ];

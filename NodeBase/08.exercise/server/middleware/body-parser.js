@@ -1,5 +1,7 @@
 module.exports = async function (req, res) {
   return new Promise((resolve, reject) => {
+    console.log(req.getHeader("Content-Type"));
+    console.log(req.getHeaders());
     let buffer = Buffer.from([]);
     req.on("data", function (chunk) {
       buffer = Buffer.concat([buffer, chunk]);
