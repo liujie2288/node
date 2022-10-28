@@ -8,8 +8,6 @@ function login(req, res) {
   const body = req.body;
   const userName = body.username;
 
-  res.writeHead(200, { "content-type": "aplication/json;charset=utf-8" });
-
   // 2. 根据提交的用户名去数据库查询该用户信息
   pool.query(
     "SELECT * FROM user WHERE username = ?",
@@ -18,23 +16,30 @@ function login(req, res) {
       if (err) {
         console.log(err);
         res.statusCode = 500;
-        res.end(JSON.stringify({ data: null, message: "服务器异常" }));
+        // 类似express语法，因为在createServer扩展了http.ServerResponse类
+        res.status(500).json({ data: null, message: "服务器异常" });
       } else {
         const entity = result[0];
         let statusCode,
           message,
           data = null;
-        // 3. 如果查询到用户信息，比对用户密码与提交的密码是否一致
-        if (bcrypt.compareSync(body.password, entity.password)) {
-          statusCode = 200;
-          message = "登录成功";
-          data = { id: entity.id, username: entity.username };
+        if (entity) {
+          // 3. 如果查询到用户信息，比对用户密码与提交的密码是否一致
+          if (bcrypt.compareSync(body.password, entity.password)) {
+            statusCode = 200;
+            message = "登录成功";
+            data = { id: entity.id, username: entity.username };
+          } else {
+            statusCode = 403;
+            message = "密码错误";
+          }
         } else {
           statusCode = 403;
-          message = "账号或密码错误";
+          message = "用户名不存在";
         }
-        res.statusCode = statusCode;
-        res.end(JSON.stringify({ data, message }));
+        console.log("login statusCode", statusCode);
+        // 类似express语法，因为在createServer扩展了http.ServerResponse类
+        res.status(statusCode).json({ data, message });
       }
     }
   );

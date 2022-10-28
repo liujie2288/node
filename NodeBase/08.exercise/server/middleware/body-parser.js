@@ -1,19 +1,24 @@
 module.exports = async function (req, res) {
   return new Promise((resolve, reject) => {
-    console.log(req.getHeader("Content-Type"));
-    console.log(req.getHeaders());
+    const contentType = req.headers["content-type"];
     let buffer = Buffer.from([]);
     req.on("data", function (chunk) {
       buffer = Buffer.concat([buffer, chunk]);
     });
     req.on("end", function () {
-      const data = buffer.toString();
+      let data = buffer.toString();
       try {
-        const newData = JSON.parse(data);
-        req.body = newData;
+        if (contentType?.includes("application/x-www-form-urlencoded")) {
+          const searchParams = new URLSearchParams(data);
+          data = Object.fromEntries(searchParams.entries());
+        } else if (contentType?.includes("application/json")) {
+          data = JSON.parse(data);
+        }
       } catch (error) {
-        req.body = data;
+        console.log(error);
       }
+      console.log("body-parser", data);
+      req.body = data;
       resolve(data);
     });
     req.on("error", function (err) {

@@ -9,8 +9,6 @@ function register(req, res) {
   const username = body.username; // 用户名
   const password = body.password; // 密码
 
-  console.log(body);
-
   res.setHeader("content-type", "aplication/json;charset=utf-8");
 
   // 2. 对数据进行校验

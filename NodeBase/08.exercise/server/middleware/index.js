@@ -7,6 +7,7 @@ module.exports = {
       try {
         await middlewares[index](req, res);
       } catch (error) {
+        console.log("middleware error", error);
         return false;
       }
     }
