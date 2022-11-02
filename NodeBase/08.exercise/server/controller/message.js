@@ -1,29 +1,35 @@
 const pool = require("../db");
 
 // 获取留言板列表
-function getMessage(req, res) {
-  const { pn, pageSize } = req;
-  pool.query("SELECT * FROM message", function (error, results) {
-    let httpCode,
-      message,
-      data = null;
-    if (error) {
-      httpCode = 500;
-      message = "服务器异常，查询失败";
-    } else {
-      httpCode = 200;
-      data = results;
-      message = "查询成功";
+async function getMessage(req, res) {
+  let { pn = 1, pageSize = 10 } = req.body;
+  const promisePool = pool.promise();
+  try {
+    let rows;
+    [rows] = await promisePool.query("SELECT COUNT(*) as total FROM message");
+    const total = rows[0]["total"];
+    if (total > 0) {
+      [rows] = await promisePool.query(
+        "SELECT * FROM message ORDER BY id DESC LIMIT ?,?",
+        [(pn - 1) * pageSize, pageSize * 1]
+      );
     }
-    res.statusCode = httpCode;
-    res.end(JSON.stringify({ data, message: message }));
-  });
+    res.status(200).json({
+      data: {
+        total,
+        rows,
+      },
+      message: "",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
 }
 
 // 发送留言消息
 function sendMessage(req, res) {
-  const { userId, message } = res.body;
-  res.setHeader("Content-type", "application/json;charset=utf-8");
+  const { userId, message } = req.body;
   let httpCode,
     resMessage,
     data = null;
@@ -32,8 +38,7 @@ function sendMessage(req, res) {
     resMessage = "留言内容不能为空";
   }
   if (resMessage) {
-    res.statusCode = httpCode;
-    res.end(JSON.stringify({ data, message: resMessage }));
+    res.status(httpCode).json({ data, message: resMessage });
     return;
   }
 
@@ -44,19 +49,19 @@ function sendMessage(req, res) {
       resMessage = "服务器错误，连接数据库失败";
     } else {
       connection.query(
-        "INSERT INTO message(message,user_id) values(?,?,now())",
+        "INSERT INTO message(user_id,message,create_time) values(?,?,now())",
         [userId, message],
         function (error, results) {
           if (error) {
+            console.log(error);
             httpCode = 500;
-            message = "留言添加失败";
+            resMessage = error.message;
           } else {
             httpCode = 200;
-            message = "留言添加成功";
+            resMessage = "留言添加成功";
             data = results.insertId;
           }
-          res.statusCode = httpCode;
-          res.end(JSON.stringify({ data, message: resMessage }));
+          res.status(httpCode).json({ data, message: resMessage });
         }
       );
     }

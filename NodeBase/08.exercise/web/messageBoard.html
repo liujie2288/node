@@ -189,14 +189,13 @@
     <script src="./js/islogin.js"></script>
     <script>
       $(function () {
-        let userName = sessionStorage.getItem("userName");
         let userId = sessionStorage.getItem("id");
 
         // 查询留言板
-        if (userName && userId) {
+        if (userId) {
           // 如果有存储
           $.ajax({
-            url: "http://localhost:8888/getMessage",
+            url: "http://localhost:8888/api/messages",
             type: "get",
             dataType: "json",
             success: function (res) {
@@ -208,10 +207,10 @@
                   `
                 <li>
                   <span class="text-warning font-bold">☆ </span>
-                  <span class="user-message">${res.data[item].user_message}</span>
+                  <span class="user-message">${res.data[item].message}</span>
                   <span>—— </span>
-                  <span class="user-name">${res.data[item].user_name} [${res.data[item].user_id}]</span>
-                  <span class="message-time">${res.data[item].time}</span>
+                  <span class="user-name">${res.data[item].username} [${res.data[item].user_id}]</span>
+                  <span class="message-time">${res.data[item].create_time}</span>
                 </li>
               `;
               }
@@ -235,17 +234,16 @@
             alert("留言长度不能超过 140 位！");
           } else {
             $.ajax({
-              url: "http://localhost:8888/sendMessage",
+              url: "http://localhost:8888/api/sendMessage",
               type: "post",
               dataType: "json",
               data: {
-                userid: userId,
-                username: userName,
+                userId: userId,
                 message: messageText,
               },
-              success: function (res) {
+              success: function (res, status, xhr) {
                 console.log(res);
-                if (res.code == "0") {
+                if (xhr.status === 200) {
                   alert("新增成功！");
                   window.location.reload();
                 }
@@ -253,13 +251,7 @@
               error: function (err) {
                 console.log(err);
                 console.log(err.responseText);
-                if (err.responseText == "登录失败，留言内容为空！") {
-                  alert("登录失败，留言内容为空！");
-                } else if (err.responseText == "登录失败，字数超过限制！") {
-                  alert("登录失败，字数超过限制！");
-                } else {
-                  alert("未知错误！");
-                }
+                alert("留言失败" + err.responseJSON.message);
               },
             });
           }
