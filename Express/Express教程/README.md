@@ -1091,3 +1091,48 @@ app.use("/birds", birds);
 ```
 
 该应用程序现在将能够处理对/birds 和的请求/birds/about，以及调用特定于路由的 timeLog 中间件函数。
+
+## 案例
+
+- [使用 Express 开发接口服务](./realworld-api-express/README.md)
+
+## 遇到的问题
+
+1. 为什么`use(path,middleware)`方法挂载的中间件，请求路径与 path 匹配时，只要请求路径以 path 开头就能匹配（请求路径`/user/123` 能匹配到`use("/user",(req,res)=>{})`路由），而`METHOD(path,middleware)`方法挂载的中间件，需要请求路径和 path 比对整个路径才能匹配。比如
+
+```js
+const express = require("express");
+
+const app = new express();
+const router = express.Router();
+
+// 使用use挂载中间件
+app.use("/user", function (req, res, next) {
+  console.log("/user");
+  res.send({
+    originalUrl: req.originalUrl,
+    url: req.url,
+  });
+});
+
+// 排除router的原因
+router.use("/:id", function (req, res, next) {
+  console.log("/a-user/:id");
+  res.send({
+    originalUrl: req.originalUrl,
+    url: req.url,
+  });
+});
+
+app.use("/a-user", router);
+
+app.listen(3030);
+```
+
+在浏览器中访问`http://localhost:3030/user/123`,发现可以匹配到`/user`路由。（通过 router.use 方法挂载的中间件表现效果一致）
+
+而将`use`方法换成`METHOD（get,post,....）`后，浏览器访问`http://localhost:3030/user/123`发现不能再匹配`/user`路由，只有`http://localhost:3030/user`才能命中路由。这是为什么呢？
+
+首先从使用角度分析，当我们使用`use`方法挂载路由实例对象时，我们是希望以路由开始的的请求，都进入到路由处理程序中来被处理。比如上面示例中`app.use("/a-user", router)`），当用户访问`/a-user/123`时候，我们是希望程序进入到 router 实例对象中来。那如果需要 path 和请求路径完全匹配的话，这里的路由将不会被匹配，对应程序也不会被执行。而当使用 get 等 METHOD 方法时，我们是想访问到具体的请求的路径的对应资源，所以需要完全比对匹配。（不可能用户输入`/a-user/123`返回`/a-user/123/xxxx`的内容吧）
+
+从源码角度分析，app.use 和 router.use 挂载路由时使用了`path-to-regexp`库，use 方法采用了`end:false`配置项，表示不匹配到末尾，而 method 方法则都采用`end:true`配置项，表示匹配到末尾。
