@@ -3,6 +3,7 @@ const morgan = require("morgan");
 const cors = require("cors");
 const router = require("./router");
 const errorHandler = require("./middleware/error-handle");
+require("./model");
 
 // 从环境变量中读取PORT设置
 // linux 设置环境变量并启动该node服务： PORT=4010

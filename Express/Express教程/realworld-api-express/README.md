@@ -374,7 +374,7 @@ module.exports = () => {
 };
 ```
 
-注： 直接发送 error 时会出现`{}`，可以通过`error.toString()`或者 `node:util.format`方法格式化 error，然后再返回。
+注： 直接发送 error 时会出现`{}`，可以通过`error.toString()`或者 `node:util.format()`方法格式化 error，然后再返回给客户端。
 
 在 app.js 中挂载错误处理中间件：
 
@@ -383,3 +383,54 @@ const errorHandler = require("./middleware/error-handle");
 
 app.use(errorHandler());
 ```
+
+## 接口实现 - 前置准备
+
+### 环境依赖
+
+- 搭建[Mongodb](../../../SQL/Mongodb/README.md)数据库
+- 安装[Mongoose](../../../SQL/Mongoose/README.md)工具包（以对象模型操作 mongodb 的工具包）
+
+### 数据操作文件初始化
+
+为了方便对每个模型单独管理，可以将模型拆分到单独文件中。
+
+```shell
+├── user.js	# 用户
+├── articles.js	#
+├── xxxx.js	#
+├── index.js	# model入口文件，用户连接数据库和导出schema
+```
+
+`model/index.js`初始化数据库连接以及导出各个模块 model。
+
+```js
+// model/index.js
+const mongoose = require("mongoose");
+
+main().catch((err) => console.log("MongoDB数据库错误", err));
+
+async function main() {
+  await mongoose.connect("mongodb://localhost:27017/realworld");
+
+  console.log("MongoDB 数据库连接成功");
+}
+
+module.exports = {
+  User: mongoose.model("user", require("./user")),
+  //...
+};
+```
+
+### 接口实现思路
+
+实现接口服务一般会有以下几个操作：
+
+1. 获取请求体数据
+2. 数据验证
+   1. 基本数据验证（例如，是否包含必须字段，字段格式是否正确等）
+   2. 业务数据验证（例如，用户名是否重复等）
+3. 验证通过后，将数据保存到数据库
+4. 发送成功响应
+
+## 实现用户注册
