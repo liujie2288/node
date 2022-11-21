@@ -25,6 +25,7 @@ yarn add express
 ├── middleware	# 用于编写中间件（管理项目通用中间件）
 ├── router	# 用于配置 URL 路由规则
 ├── util	# 工具模块（封装常用的辅助工具函数）
+├── validator	# 验证模块（封装每个路由处理程序的验证函数）
 └── app.js	# 用于自定义启动时的初始化工作
 ```
 
@@ -388,7 +389,7 @@ app.use(errorHandler());
 
 ### 环境依赖
 
-- 搭建[Mongodb](../../../SQL/Mongodb/README.md)数据库
+- 安装[Mongodb](../../../SQL/Mongodb/README.md)数据库
 - 安装[Mongoose](../../../SQL/Mongoose/README.md)工具包（以对象模型操作 mongodb 的工具包）
 
 ### 数据操作文件初始化
@@ -416,6 +417,7 @@ async function main() {
   console.log("MongoDB 数据库连接成功");
 }
 
+// 组织导出模型类
 module.exports = {
   User: mongoose.model("user", require("./user")),
   //...
@@ -434,3 +436,223 @@ module.exports = {
 4. 发送成功响应
 
 ## 实现用户注册
+
+1. 设计 user 数据模型：
+
+```js
+const mongoose = require("mongoose");
+
+const userSchema = new mongoose.Schema({
+  userName: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  // 个人介绍
+  bio: {
+    type: String,
+    default: null,
+  },
+  image: {
+    type: String,
+    default: null,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+module.exports = userSchema;
+```
+
+2. 接收客户端请求数据并验证
+
+日常开发中 mongodb 提供的数据校验是兜底验证，防止脏数据插入到库中，在接口开发时，我们应该对输入的数据进行逻辑验证后再保存到数据库中。
+
+```js
+const reqUser = req.body.user;
+if (!reqUser.username) {
+  return res.status(422).json({
+    error: "缺少userName参数",
+  });
+}
+if (!reqUser.email) {
+  return res.status(422).json({
+    error: "缺少email参数",
+  });
+}
+if (!reqUser.password) {
+  return res.status(422).json({
+    error: "缺少password参数",
+  });
+}
+// ...
+```
+
+3. 插入数据库
+
+```js
+const { User } = require("../model");
+
+const user = new User(req.body.user);
+// 数据保存到数据库中
+await user.save();
+```
+
+4. 保存成功后，发送成功响应
+
+```js
+res.status(201).json({
+  user,
+});
+```
+
+查看注册成功后响应：
+![](./assets/register-data.png)
+
+验证数据库插入的数据：
+![](./assets/register-success.png)
+
+> 这里使用 Navicat Premium 可视化工具查看。
+
+### 验证功能改造
+
+上面验证的方式比较繁琐，可以使用[express-validator](https://www.npmjs.com/package/express-validator)工具包来优化验证功能。
+
+该在 router/user.js 模块中，用户注册路由，在它前面添加验证功能，验证通过后再执行数据库操作逻辑：
+
+```js
+const express = require("express");
+const { body, validationResult } = require("express-validator");
+const userCtrl = require("../controller/user");
+const { User } = require("../model");
+
+const router = express.Router();
+
+router.post(
+  "/users",
+  // 1. 配置验证规则
+  [
+    body("user.username")
+      .notEmpty()
+      .withMessage("用户名不能为空")
+      .bail() // 如果前面验证失败，则停止运行验证
+      // 自定义校验逻辑
+      .custom(async (username) => {
+        // 判断添加的邮箱是否重复
+        const user = await User.findOne({ username });
+        if (user) {
+          return Promise.reject("用户名已存在");
+        }
+      }),
+    body("user.password").notEmpty().withMessage("密码不能为空"),
+    body("user.email")
+      .notEmpty() // 不能为空
+      .withMessage("邮箱不能为空") // 自定义消息内容
+      .bail() // 如果前面验证失败，则停止运行验证
+      // 自定义校验逻辑
+      .custom(async (email) => {
+        // 判断添加的邮箱是否重复
+        const user = await User.findOne({ email });
+        if (user) {
+          return Promise.reject("邮箱已存在");
+        }
+      }),
+  ],
+  // 2. 判断验证结果
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    next(); // 没有验证错误，继续后面的处理逻辑
+  },
+  // 3. 通过验证执行具体的控制器逻辑
+  userCtrl.register
+);
+```
+
+### 提取验证中间件模块
+
+现在所有的验证逻辑都是放到 router 中，更好的方式是将验证逻辑放到单独的模块中，通过中间件的方式组织起来。
+
+1. 封装验证中间件（[来自于官网验证中间件](https://express-validator.github.io/docs/running-imperatively.html)）：
+
+```js
+// middleware/validate.js
+const express = require("express");
+const { validationResult, ValidationChain } = require("express-validator");
+
+const validate = (validations) => {
+  return async (req, res, next) => {
+    await Promise.all(validations.map((validation) => validation.run(req)));
+
+    const errors = validationResult(req);
+    if (errors.isEmpty()) {
+      return next();
+    }
+
+    res.status(400).json({ errors: errors.array() });
+  };
+};
+```
+
+2. 提取验证逻辑到单独的模块中:
+
+```js
+// validator/user.js
+const { body } = require("express-validator");
+const validate = require("../middleware/validate");
+const { User } = require("../model");
+
+exports.register = validate([
+  body("user.username")
+    .notEmpty()
+    .withMessage("用户名不能为空")
+    .bail() // 如果前面验证失败，则停止运行验证
+    // 自定义校验逻辑
+    .custom(async (username) => {
+      // 判断添加的邮箱是否重复
+      const user = await User.findOne({ username });
+      if (user) {
+        return Promise.reject("用户名已存在");
+      }
+    }),
+  body("user.password").notEmpty().withMessage("密码不能为空"),
+  body("user.email")
+    .notEmpty() // 不能为空
+    .withMessage("邮箱不能为空") // 自定义消息内容
+    .bail() // 如果前面验证失败，则停止运行验证
+    // 自定义校验逻辑
+    .custom(async (email) => {
+      // 判断添加的邮箱是否重复
+      const user = await User.findOne({ email });
+      if (user) {
+        return Promise.reject("邮箱已存在");
+      }
+    }),
+]);
+```
+
+3. 路由中添加验证中间件。
+
+```js
+// ...
+const validator = require("../validator/user");
+router.post("/users", validator.register, userCtrl.register);
+// ...
+```
+
+### 用户注册密码处理

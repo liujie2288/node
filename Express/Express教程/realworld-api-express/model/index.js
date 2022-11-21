@@ -9,6 +9,7 @@ async function main() {
   console.log("MongoDB 数据库连接成功");
 }
 
+// 组织导出模型类
 module.exports = {
   User: mongoose.model("user", require("./user")),
 };

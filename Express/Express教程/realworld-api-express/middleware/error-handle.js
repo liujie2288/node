@@ -1,4 +1,5 @@
 const util = require("util");
+
 module.exports = () => {
   return (error, req, res, next) => {
     console.log(error);

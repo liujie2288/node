@@ -41,7 +41,7 @@ brew services stop mongodb-community
 验证是否启动成功：
 
 ```bash
-bashbrew services list
+brew services list
 # 或者 ps aux | grep -v grep | grep mongod
 ```
 
