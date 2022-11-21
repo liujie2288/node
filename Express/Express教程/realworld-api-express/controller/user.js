@@ -1,10 +1,24 @@
+const { secret } = require("../config/config.default");
 const { User } = require("../model");
+const { sign } = require("../util/jwt");
 // 用户登录
 exports.login = async function (req, res, next) {
   try {
-    // JSON.parse("是短发是短发时");
     // 登录逻辑处理
-    res.send("post /users/login");
+    res.status(200).json({
+      user: {
+        email: req.user.email,
+        username: req.user.username,
+        bio: req.user.bio,
+        image: req.user.image,
+        token: await sign(
+          {
+            id: req.user._id,
+          },
+          secret
+        ),
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -33,10 +47,12 @@ exports.register = async function (req, res, next) {
     //   });
     // }
     //3. 验证通过，将数据保存到数据库中
-    const user = new User(req.body.user);
+    let user = new User(req.body.user);
     // 数据保存到数据库中
     await user.save();
-
+    // 过滤密码字段，不应该返回到客户端
+    user = user.toJSON();
+    delete user["password"];
     //4. 发送成功响应
     res.status(201).json({
       user,
@@ -49,8 +65,7 @@ exports.register = async function (req, res, next) {
 // 获取当前用户信息
 exports.getCurrentUser = async function (req, res, next) {
   try {
-    // 获取当前的登录用户逻辑处理
-    res.send("get /user");
+    res.status(200).json({ user: req.user });
   } catch (error) {
     next(error);
   }

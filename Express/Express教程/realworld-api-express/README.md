@@ -656,3 +656,113 @@ router.post("/users", validator.register, userCtrl.register);
 ```
 
 ### 用户注册密码处理
+
+注册时的密码都是明文保存到数据库，为了用户数据的安全，需要将用户密码加密后保存到数据库中。
+
+数据加密的几种方式：
+
+1. 使用 hash（md5）加密
+2. 使用 hash（md5）加密 + 盐处理
+3. 非对称加密，使用公钥加密传输数据，使用私钥解密数据。
+4. bcrypt 库
+
+更多密码加密内容，请阅读[密码加密](../../../密码加密.md)。
+
+这里我们使用 [bcrypt](https://www.npmjs.com/package/bcrypt) 库来完成密码加密。
+
+改造 user scheme，在保存到数据库时使用 bcrypt 加密：
+
+```js
+const bcrypt = require("bcrypt");
+const userSchema = new mongoose.Schema({
+  // ...
+  password: {
+    type: String,
+    required: true,
+    select: false, // 查询信息时过滤掉密码
+    set(value) {
+      return bcrypt.hashSync(value, 10);
+    },
+  },
+  // ...
+});
+```
+
+上面在 schema 配置中添加了`select:false`来过滤查询到的用户信息中包含的密码字段
+
+## 实现用户登录
+
+1. 编写用户登录验证逻辑
+
+```js
+// validator/user.js
+
+// ...
+exports.login = [
+  validate([
+    body("user.email").notEmpty().withMessage("邮箱不能为空"),
+    body("user.password").notEmpty().withMessage("密码不能为空"),
+  ]),
+  //上面非空验证通过后，再确认用户名是否存在
+  validate([
+    body("user.email").custom(async (email, { req }) => {
+      // 因为model中select:false,所以这里需要通过populate把密码填充回来
+      const user = await User.findOne({ email }).populate("password");
+      if (!user) {
+        return Promise.reject("邮箱不存在");
+      }
+      // 存在则挂载用户信息方便接下来的中间件使用
+      req.user = user;
+    }),
+  ]),
+  // 用户名存在后，验证该用户的密码和传递的密码是否一致
+  validate([
+    body("user.password").custom(async (password, { req }) => {
+      if (!bcrypt.compareSync(password, req.user.password)) {
+        return Promise.reject("密码不正确");
+      }
+    }),
+  ]),
+];
+```
+
+2. 路由中添加验证中间件。
+
+```js
+// router/user.js
+
+// ...
+const validator = require("../validator/user");
+router.post("/users/login", validator.login, userCtrl.login);
+// ...
+```
+
+3. 返回用户信息
+
+```js
+// controller/user.js
+
+// 用户登录
+exports.login = async function (req, res, next) {
+  try {
+    // 登录逻辑处理
+    // req.user 在验证的时候已经被挂载到 req 了
+    res.status(200).json({
+      user: {
+        email: req.user.email,
+        username: req.user.username,
+        bio: req.user.bio,
+        image: req.user.image,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+### JWT 身份认证
+
+http 是无状态的，为了知道每次请求的发起人是谁，可以在登录后返回一个 token（令牌） 的方式来标识用户，用户在每次请求时携带上这个 token 后，服务器就能知道这个 token 对应的用户信息。
+
+> 关于 JWT 身份认证的使用，请查看[文档](../../../基于JWT的身份认证.md)
