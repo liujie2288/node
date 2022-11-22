@@ -766,3 +766,90 @@ exports.login = async function (req, res, next) {
 http 是无状态的，为了知道每次请求的发起人是谁，可以在登录后返回一个 token（令牌） 的方式来标识用户，用户在每次请求时携带上这个 token 后，服务器就能知道这个 token 对应的用户信息。
 
 > 关于 JWT 身份认证的使用，请查看[文档](../../../基于JWT的身份认证.md)
+
+1. 封装 JWT 工具函数库：
+
+```js
+// util/jwt.js
+const jwt = require("jsonwebtoken");
+const { promisify } = require("util");
+
+exports.sign = promisify(jwt.sign);
+
+exports.verify = promisify(jwt.verify);
+```
+
+2. 使用 [uuid](https://www.uuid.online/) 随机生成一个 secret
+
+```js
+// config/config.default.js
+module.exports = {
+  secret: "3bc28927-1291-4d2d-a934-9c719ed746b8", // 随机生成的秘钥ID
+};
+```
+
+3. 登录成功后，使用用户 id 生成 token 返回给客户端：
+
+```js
+// controller/user.js
+const { sign } = require("../util/jwt");
+const { secret } = require("../config/config.default");
+exports.login = async function (req, res, next) {
+  try {
+    res.status(200).json({
+      user: {
+        email: req.user.email,
+        username: req.user.username,
+        // ... 其它需要返回的用户信息
+        token: await sign(
+          {
+            id: req.user._id,
+          },
+          secret
+        ),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+4. 封装身份认证中间件：
+
+```js
+// middleware/auth.js
+const { secret } = require("../config/config.default");
+const { User } = require("../model");
+const { verify } = require("../util/jwt");
+module.exports = () =>
+  async function (req, res, next) {
+    const Authorization = req.get("Authorization");
+    const token = Authorization ? Authorization.split(" ")[1] : "";
+    if (!token) {
+      return res.status(401).end();
+    }
+    try {
+      const decoded = await verify(token, secret);
+      // 为当前请求挂载用户信息，后续中间件可以直接使用
+      req.user = await User.findById(decoded.id);
+      next();
+    } catch (error) {
+      res.status(401).end();
+    }
+  };
+```
+
+5. 在需要身份认证的接口前添加身份认证中间件
+
+```js
+// router/user.js
+const auth = require("../middleware/auth");
+router.get("/user", auth(), userCtrl.getCurrentUser);
+```
+
+6. 在需要认证信息的接口请求 header 中添加`Authorization`头信息
+
+![](./assets/authorization-header.png)
+
+## 实现创建文章

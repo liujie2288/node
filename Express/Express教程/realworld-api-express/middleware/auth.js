@@ -10,9 +10,12 @@ module.exports = () =>
     }
     try {
       const decoded = await verify(token, secret);
+      console.log(decoded);
+      // 为当前请求挂载用户信息，后续中间件可以直接使用
       req.user = await User.findById(decoded.id);
       next();
     } catch (error) {
+      console.log(error);
       res.status(401).end();
     }
   };
