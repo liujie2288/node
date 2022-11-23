@@ -3,6 +3,10 @@ const baseModel = require("./base-model");
 
 const articleSchema = new mongoose.Schema({
   ...baseModel,
+  // 处理后的文章标题，文章ID
+  slug: {
+    type: String,
+  },
   title: {
     type: String,
     required: true,
@@ -15,9 +19,6 @@ const articleSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  slug: {
-    type: String,
-  },
   tagList: {
     type: [String],
   },
@@ -28,8 +29,15 @@ const articleSchema = new mongoose.Schema({
   // 收藏数量
   favoritesCount: {
     type: Number,
+    default: 0,
   },
-  author: {},
+  // 不能支持存储用户信息，如果用户信息变了，其它使用了地方都得变
+  // 存储用户ID，查询时使用 .populate 填充用户信息
+  author: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user",
+    required: true,
+  },
 });
 
 module.exports = articleSchema;
