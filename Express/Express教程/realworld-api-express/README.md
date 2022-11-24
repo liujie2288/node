@@ -1053,7 +1053,11 @@ exports.getAllArticle = async function (req, res, next) {
     }
     const [articlesCount, articles] = await Promise.all([
       Article.find(filter).countDocuments(),
-      Article.find(filter).populate("author").skip(offset).limit(limit),
+      Article.find(filter)
+        .populate("author")
+        .skip(parseInt(offset)) // 跳过多少条
+        .limit(parseInt(limit)) // 取多少条
+        .sort({ createdAt: -1 }), // 按降序排序（-1降序，1升序），最新的文章在最前面
     ]);
     res.status(200).json({
       articles,
@@ -1069,4 +1073,5 @@ exports.getAllArticle = async function (req, res, next) {
 
 - 使用 User 模型查询 username 对应的 userId
 - 传递的 tag 数据去筛选 tagList 中包含的文章数据
-- 使用`offset`，`skip`完成分页功能
+- 使用`offset()`，`skip()`完成分页功能
+- 使用`sort()`对查询结果排序

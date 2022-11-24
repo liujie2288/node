@@ -1,5 +1,4 @@
-const mongoose = require("mongoose");
-const { body, param } = require("express-validator");
+const { body } = require("express-validator");
 const validate = require("../middleware/validate");
 
 exports.createArticle = validate([
@@ -9,9 +8,17 @@ exports.createArticle = validate([
 ]);
 
 exports.getArticle = validate([
-  param("articleId").custom(async (value) => {
-    if (!mongoose.isValidObjectId(value)) {
-      return Promise.reject("文章ID类型错误");
+  validate.isValidObjectId(["params"], "articleId"),
+]);
+
+// 2.  文章跟新的参数如何验证的
+
+exports.updateArticle = validate([
+  validate.isValidObjectId(["params"], "articleId"),
+  body("article").custom((article) => {
+    if (!article || (!article.title && !article.body && !article.description)) {
+      throw new Error("缺少参数");
     }
+    return true;
   }),
 ]);

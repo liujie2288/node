@@ -7,6 +7,8 @@ exports.register = validate([
   body("user.username")
     .notEmpty()
     .withMessage("用户名不能为空")
+    .isString()
+    .withMessage("用户名必须是字符串")
     .bail() // 如果前面验证失败，则停止运行验证
     // 自定义校验逻辑
     .custom(async (username) => {

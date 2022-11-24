@@ -14,4 +14,12 @@ router.get("/:articleId", validator.getArticle, articleCtrl.getArticle);
 // 获取所有文章
 router.get("/", articleCtrl.getAllArticle);
 
+// 更新文章
+router.put(
+  "/:articleId",
+  auth(),
+  validator.updateArticle,
+  articleCtrl.updateArticle
+);
+
 module.exports = router;
