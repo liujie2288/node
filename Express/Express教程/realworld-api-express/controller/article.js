@@ -39,19 +39,25 @@ exports.getArticle = async function (req, res, next) {
 exports.getAllArticle = async function (req, res, next) {
   try {
     const filter = {};
-    const { author, limit = 20, offset = 0 } = req.query;
+    const { author, limit = 20, offset = 0, tag } = req.query;
+    // 筛选作者相关
     if (author) {
       const user = await User.findOne({ username: author });
       if (user) {
         filter.author = user._id;
       }
     }
-    const articles = await Article.find(filter)
-      .populate("author")
-      .skip(offset)
-      .limit(limit);
+    // 筛选分类相关
+    if (tag) {
+      filter.tagList = tag;
+    }
+    const [articlesCount, articles] = await Promise.all([
+      Article.find(filter).countDocuments(),
+      Article.find(filter).populate("author").skip(offset).limit(limit),
+    ]);
     res.status(200).json({
       articles,
+      articlesCount,
     });
   } catch (error) {
     next(error);

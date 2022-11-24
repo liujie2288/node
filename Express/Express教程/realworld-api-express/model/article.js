@@ -31,7 +31,7 @@ const articleSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  // 不能支持存储用户信息，如果用户信息变了，其它使用了地方都得变
+  // 不能直接存储用户信息，如果用户信息变了，其它使用了地方都得变，不合理
   // 存储用户ID，查询时使用 .populate 填充用户信息
   author: {
     type: mongoose.Schema.Types.ObjectId,

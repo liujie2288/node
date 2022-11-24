@@ -853,3 +853,220 @@ router.get("/user", auth(), userCtrl.getCurrentUser);
 ![](./assets/authorization-header.png)
 
 ## 实现创建文章
+
+1. 设计 article 数据模型：
+
+```js
+const mongoose = require("mongoose");
+// 模型公共字段，里面记录了updateTime和createTime的Schema字段配置
+const baseModel = require("./base-model");
+
+const articleSchema = new mongoose.Schema({
+  ...baseModel,
+  // 处理后的文章标题，文章ID
+  slug: {
+    type: String,
+  },
+  title: {
+    type: String,
+    required: true,
+  },
+  description: {
+    type: String,
+    required: true,
+  },
+  body: {
+    type: String,
+    required: true,
+  },
+  tagList: {
+    type: [String], // 标签为stirng类型的数组
+  },
+  // 是否收藏
+  favorited: {
+    type: Boolean,
+  },
+  // 收藏数量
+  favoritesCount: {
+    type: Number,
+    default: 0,
+  },
+  // 不能直接存储用户信息，如果用户信息变了，其它使用了地方都得变，不合理
+  // 存储用户ID，查询时使用 .populate 填充用户信息
+  author: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user",
+    required: true,
+  },
+});
+
+module.exports = articleSchema;
+```
+
+2. 添加创建文章路由:
+
+因为创建文章需要鉴权（用户登录后才能操作），所以需要添加`auth`中间件。
+
+```js
+// router/article.js
+
+const express = require("express");
+const auth = require("../middleware/auth");
+const validator = require("../validator/article");
+const articleCtrl = require("../controller/article");
+
+const router = express.Router();
+
+// 创建文章
+router.post("/", auth(), validator.createArticle, articleCtrl.createArticle);
+
+module.exports = router;
+```
+
+3. 编写验证函数：
+
+```js
+// validator/article.js
+const { body } = require("express-validator");
+const validate = require("../middleware/validate");
+
+exports.createArticle = validate([
+  body("article.title").notEmpty().withMessage("文章标题不能为空"),
+  body("article.description").notEmpty().withMessage("文章摘要不能为空"),
+  body("article.body").notEmpty().withMessage("文章内容不能为空"),
+]);
+```
+
+4. 编写控制器逻辑处理：
+
+```js
+// controller/article.js
+const { Article } = require("../model");
+
+// 创建文章
+exports.createArticle = async function (req, res, next) {
+  try {
+    const article = new Article(req.body.article);
+    // 设置当前文章作者为当前用户
+    article.author = req.user._id;
+    // 填充用户信息，返回给客户端
+    article.populate("author");
+    await article.save();
+    res.status(200).json({
+      article: article,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+在创建 article model 对象时，存储的是 author 的 id，因为需要返回 author 关联的文档信息，所以这里需要执行`populate`操作，操作后 article model 对象中的 author 数据为 user 表中的用户文档信息。
+
+注：因为创建文章需要鉴权，所以在添加数据时，需要将 login 接口返回的 token 添加到 header 中。
+
+![](./assets/create-article.png)
+
+## 实现根据文章 ID 获取文章
+
+1. 添加路由
+
+```js
+// router/article.js
+
+// 获取文章
+router.get("/:articleId", validator.getArticle, articleCtrl.getArticle);
+```
+
+2. 编写验证函数：
+
+传入的文章 ID 可能不是有效的 Mongondb ID 导致查询报错，所以这里添加判断是否是 mongodb objectId 的判断。
+
+```js
+// validator/article.js
+const mongoose = require("mongoose");
+const { param } = require("express-validator");
+
+exports.getArticle = validate([
+  param("articleId").custom(async (value) => {
+    if (!mongoose.isValidObjectId(value)) {
+      return Promise.reject("文章ID类型错误");
+    }
+  }),
+]);
+```
+
+3. 添加控制器处理逻辑
+
+```js
+// controller/article.js
+const { Article } = require("../model");
+exports.getArticle = async function (req, res, next) {
+  try {
+    // 返回文章信息中的user信息依然要使用populate来填充
+    const article = await Article.findById(req.params.articleId).populate(
+      "author"
+    );
+    if (article) {
+      res.status(200).json({
+        article: article,
+      });
+    } else {
+      res.status(404).end();
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+## 实现获取所有文章
+
+1. 添加路由
+
+```js
+// router/article.js
+
+// 获取所有文章
+router.get("/", articleCtrl.getAllArticle);
+```
+
+2. 添加控制器处理逻辑
+
+```js
+// controller/article.js
+const { Article, User } = require("../model");
+exports.getAllArticle = async function (req, res, next) {
+  try {
+    const filter = {};
+    const { author, limit = 20, offset = 0, tag } = req.query;
+    // 筛选作者相关
+    if (author) {
+      const user = await User.findOne({ username: author });
+      if (user) {
+        filter.author = user._id;
+      }
+    }
+    // 筛选分类相关
+    if (tag) {
+      filter.tagList = tag;
+    }
+    const [articlesCount, articles] = await Promise.all([
+      Article.find(filter).countDocuments(),
+      Article.find(filter).populate("author").skip(offset).limit(limit),
+    ]);
+    res.status(200).json({
+      articles,
+      articlesCount,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+要点概述：
+
+- 使用 User 模型查询 username 对应的 userId
+- 传递的 tag 数据去筛选 tagList 中包含的文章数据
+- 使用`offset`，`skip`完成分页功能
