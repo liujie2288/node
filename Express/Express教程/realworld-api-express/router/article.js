@@ -22,4 +22,12 @@ router.put(
   articleCtrl.updateArticle
 );
 
+// 删除文章
+router.delete(
+  "/:articleId",
+  auth(),
+  validator.deleteArticle,
+  articleCtrl.deleteArticle
+);
+
 module.exports = router;

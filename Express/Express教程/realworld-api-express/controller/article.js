@@ -68,33 +68,70 @@ exports.getAllArticle = async function (req, res, next) {
   }
 };
 
-exports.updateArticle = async function (req, res, next) {
+async function articleExist(req, res, next) {
   try {
+    // 1. 查看文章是否存在
     const { articleId } = req.params;
-    const {
-      article: { title, body, description },
-    } = req.body;
-    const updateData = {};
-    if (title) {
-      updateData.title = title;
+    const article = await Article.findById(articleId);
+    req.article = article;
+    if (!article) {
+      return res.status(404).end();
     }
-    if (body) {
-      updateData.body = body;
-    }
-    if (description) {
-      updateData.description = description;
-    }
-    const article = await Article.findByIdAndUpdate(articleId, updateData, {
-      new: true,
-    });
-    if (article) {
-      res.status(200).send({
-        article,
-      });
-    } else {
-      res.status(404).end();
-    }
+    next();
   } catch (error) {
     next(error);
   }
-};
+}
+
+async function articleOwn(req, res, next) {
+  // 2. 查看文章是否是当前登录用户的
+  if (req.article.author.toString() !== req.user._id.toString()) {
+    return res.status(403).end();
+  }
+  next();
+}
+
+exports.updateArticle = [
+  articleExist,
+  articleOwn,
+  async function (req, res, next) {
+    try {
+      // 3. 执行更新操作
+      const {
+        article: { title, body, description },
+      } = req.body;
+      if (title) {
+        article.title = title;
+      }
+      if (body) {
+        article.body = body;
+      }
+      if (description) {
+        article.description = description;
+      }
+      // 保存到数据库
+      article.save();
+      // 4. 返回响应
+      res.status(200).send({
+        article,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+];
+
+// 删除文章
+exports.deleteArticle = [
+  articleExist,
+  articleOwn,
+  async function (req, res) {
+    try {
+      // 3. 执行删除操作
+      await req.article.remove();
+      res.status(200).end();
+    } catch (error) {
+      next(error);
+    }
+  },
+];

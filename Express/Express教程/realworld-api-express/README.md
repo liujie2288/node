@@ -1075,3 +1075,143 @@ exports.getAllArticle = async function (req, res, next) {
 - 传递的 tag 数据去筛选 tagList 中包含的文章数据
 - 使用`offset()`，`skip()`完成分页功能
 - 使用`sort()`对查询结果排序
+
+## 实现根据文章 ID 更新文章
+
+1. 添加路由
+
+```js
+// router/article.js
+
+router.put(
+  "/:articleId",
+  auth(),
+  validator.updateArticle,
+  articleCtrl.updateArticle
+);
+```
+
+2. 编写验证函数，验证文章 ID 是否是有效的 ObjectId。
+
+因为获取文章的接口中也验证了文章 ID，可以将逻辑封装提取一下：
+
+```js
+// util/validate.js
+
+const mongoose = require("mongoose");
+const { buildCheckFunction } = require("express-validator");
+
+exports.isValidObjectId = (location, field) => {
+  return buildCheckFunction(location)(field).custom(async (value) => {
+    if (!mongoose.isValidObjectId(value)) {
+      return Promise.reject("ID 不是一个有效的 ObejctId");
+    }
+  });
+};
+```
+
+```js
+// validator/article.js
+exports.updateArticle = validate([
+  // 验证文章id的有效性
+  validateUtil.isValidObjectId(["params"], "articleId"),
+]);
+```
+
+3. 编写更新文章控制器逻辑
+
+a. 查询文章 ID 对应文章是否存在，不存在返回 404
+b. 查看文章是否是当前登录用户的，不是当前用户的文章返回 403
+c. 执行更新操作 & 保存到数据库
+d. 返回响应
+
+```js
+exports.updateArticle = async function (req, res, next) {
+  try {
+    // 1. 查看文章是否存在
+    const { articleId } = req.params;
+    const article = await Article.findById(articleId);
+    if (!article) {
+      return res.status(404).end();
+    }
+    // 2. 查看文章是否是当前登录用户的
+    if (article.author.toString() !== req.user._id.toString()) {
+      return res.status(403).end();
+    }
+    // 3. 执行更新操作
+    const {
+      article: { title, body, description },
+    } = req.body;
+    if (title) {
+      article.title = title;
+    }
+    if (body) {
+      article.body = body;
+    }
+    if (description) {
+      article.description = description;
+    }
+    // 保存到数据库
+    article.save();
+    // 4. 返回响应
+    res.status(200).send({
+      article,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+## 实现根据文章 ID 删除文章
+
+删除文章同更新文章一样需要校验文章 ID，文章 ID 对应的文章是否存在，以及文章是否是自己的文章。这里提取对应功能成为独立中间件，方便更新和删除文章时复用。
+
+校验文章是否存在中间件：
+
+```js
+async function articleExist(req, res, next) {
+  try {
+    // 1. 查看文章是否存在
+    const { articleId } = req.params;
+    const article = await Article.findById(articleId);
+    req.article = article;
+    if (!article) {
+      return res.status(404).end();
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+```
+
+校验文章是否是自己的中间件：
+
+```js
+async function articleOwn(req, res, next) {
+  // 2. 查看文章是否是当前登录用户的
+  if (req.article.author.toString() !== req.user._id.toString()) {
+    return res.status(403).end();
+  }
+  next();
+}
+```
+
+组合中间件完成删除逻辑
+
+```js
+exports.deleteArticle = [
+  articleExist,
+  articleOwn,
+  async function (req, res) {
+    try {
+      // 3. 执行删除操作
+      await req.article.remove();
+      res.status(200).end();
+    } catch (error) {
+      next(error);
+    }
+  },
+];
+```
