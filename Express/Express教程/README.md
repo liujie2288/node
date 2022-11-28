@@ -1092,9 +1092,170 @@ app.use("/birds", birds);
 
 该应用程序现在将能够处理对/birds 和的请求/birds/about，以及调用特定于路由的 timeLog 中间件函数。
 
-## 案例
+## 使用 Express 开发接口服务
 
-- [使用 Express 开发接口服务](./realworld-api-express/README.md)
+[Express 开发 realword 接口服务](./realworld-api-express/README.md)
+
+## Express 与传统应用
+
+### 服务端渲染（ssr）
+
+服务端渲染是指页面内容和页面数据在服务端处理好后返回给客户端。
+
+早起的 web 应用许多都是采用服务端渲染形式，使用了诸如 asp，jsp，php 等语言来动态输出网页内容。
+
+服务端渲染有一个天然的优势就是：SEO，也存在一些缺点:
+
+- 应用的前后端部分完全耦合在一起，在前后端协同开发方面会有比较大的阻力
+- 前端没有足够的发挥空间，无法利用前端生态下优秀的解决方案
+- 相比于 SPA 应用来说，用户体验一般
+- 由于内容都是在服务端生成，所以服务端压力较大
+
+### 服务端渲染原理
+
+1. 获取数据（本地，数据库等）
+2. 获取模版
+3. 组合模版和数据返回给客户端
+
+模版内容：
+
+```html
+<!-- views/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Express SSR</title>
+  </head>
+  <body>
+    <ul>
+      #placeholder#
+    </ul>
+  </body>
+</html>
+```
+
+服务端渲染内容：
+
+```js
+// index.js
+
+const path = require("path");
+const fs = require("fs");
+const express = require("express");
+const app = express();
+
+app.get("/", function (req, res) {
+  fs.readFile(
+    path.join(__dirname, "views/index.html"),
+    "utf-8",
+    function (error, data) {
+      if (error) {
+        return res.status(404).send("404 Not Fond");
+      }
+      // 数据
+      const todoItems = ["吃饭", "睡觉", "打豆豆"];
+      // 拼装模版
+      const todoItemsStr = todoItems.reduce((str, cur) => {
+        return (str += `<li>${cur}</li>`);
+      }, "");
+      // 发挥响应
+      res.status(200).send(data.replace("#placeholder#", todoItemsStr));
+    }
+  );
+});
+
+app.listen(3010, () => {
+  console.log(`server start at http://localhost:3010`);
+});
+```
+
+### 使用模版引擎渲染页面
+
+在实际应用中我们可能需要处理模版页面中多个地方的数据，使用上面的方式会变得比较繁琐。使用模版引擎可以简化模版与数据的渲染工作。
+
+使用 [ejs](https://github.com/mde/ejs)来渲染页面：
+
+> 更多模版引擎请参考 https://github.com/sindresorhus/awesome-nodejs#templating
+
+1. 安装 art-template：
+
+```bash
+npm install ejs
+```
+
+2. 编写 ejs 模版：
+
+```html
+<!-- view/index.js -->
+<ul>
+  <% todos.forEach(todo => { %>
+  <li><%= todo %></li>
+  <% }) %>
+</ul>
+```
+
+3. 执行渲染
+
+```js
+const path = require("path");
+const ejs = require("ejs");
+app.get("/ejs", function (req, res) {
+  // 使用方式1: let template = ejs.compile(str, options); template(data);
+  // 使用方式2: ejs.render(str, data, options);
+  // 更多用法请参考ejs官方 https://ejs.co/
+  ejs.renderFile(
+    path.join(__dirname, "views/index.ejs"),
+    {
+      todos: ["吃饭", "睡觉", "打豆豆"],
+    },
+    function (error, str) {
+      if (error) {
+        return res.status(500).send(error.toString());
+      }
+      res.status(200).send(str);
+    }
+  );
+});
+```
+
+### ejs 与 express 集成
+
+ejs 可以与 express 更好的集成，使用时只需要使用`res.render(模版,数据)`就能将模版渲染并发送给客户端。
+
+使用前需要设置默认的模版引擎：
+
+```js
+app.set("view engine", "ejs");
+```
+
+渲染页面并输出客户端
+
+```js
+app.get("/express-ejs", function (req, res) {
+  // 省略了文件后缀ejs
+  res.render("index", {
+    todos: ["吃饭", "睡觉", "打豆豆"],
+  });
+});
+```
+
+默认在 views 中查找文件，也可以通过`app.set("views", 模版目录);` 修改模版文件目录地址。
+
+更多关于 experss 与模版引擎集成的信息，请查看以下地址：
+
+- [Express 中使用模版引擎](http://expressjs.com/en/guide/using-template-engines.html)
+- [为 express 开发模版引擎](http://expressjs.com/en/advanced/developing-template-engines.html)
+- [app.engine](http://expressjs.com/en/4x/api.html#app.engine)
+
+### 静态资源托管
+
+## 使用 Express 开发传统应用
+
+[Express 开发 realword 网站](./realworld-express/README.md)
 
 ## 遇到的问题
 
