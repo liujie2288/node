@@ -1253,6 +1253,17 @@ app.get("/express-ejs", function (req, res) {
 
 ### 静态资源托管
 
+网页中存在着 js,css，image，font 等静态资源。express 官方提供内置的中间件`express.static()`来完成静态资源的加载。
+
+基本使用:
+
+```js
+app.use([url], express.static(staticDir, [options]));
+```
+
+`url` 可选参数，可以用来指定静态资源的虚拟路径。
+`staticDir`是指提供静态资产的根目录（最好使用绝对路径）。
+
 ## 使用 Express 开发传统应用
 
 [Express 开发 realword 网站](./realworld-express/README.md)
