@@ -1255,7 +1255,7 @@ app.get("/express-ejs", function (req, res) {
 
 网页中存在着 js,css，image，font 等静态资源。express 官方提供内置的中间件`express.static()`来完成静态资源的加载。
 
-基本使用:
+#### 基本使用
 
 ```js
 app.use([url], express.static(staticDir, [options]));
@@ -1263,6 +1263,94 @@ app.use([url], express.static(staticDir, [options]));
 
 `url` 可选参数，可以用来指定静态资源的虚拟路径。
 `staticDir`是指提供静态资产的根目录（最好使用绝对路径）。
+
+例如：
+
+```js
+// 托管pulick目录下的静态资源
+// public/css/main.css =>  http://localhost:3000/css/main.css
+app.use(express.static(path.join(__dirname, "public")));
+
+// 设置虚拟路径
+// public/css/main.css =>  http://localhost:3000/static/css/main.css
+app.use("/static", express.static(path.join(__dirname, "public")));
+```
+
+#### 配置项
+
+- `dotfiles`: 默认不处理以`.`开头的文件和文件夹。配置值为：ignore(默认),allow,deny
+- `index`: 指定目录下的默认文件，默认为 index.html
+- `etag`: 启用或禁用 etag 生成
+- `lastModifed`: 是否发送 Lats-Modified 头信息
+
+更多配置项目参考[官方文档](http://expressjs.com/en/5x/api.html#express.static)
+
+#### 托管多个静态资源目录
+
+```js
+// 托管public目录下的静态资源
+app.use("/static", express.static(path.join(__dirname, "public")));
+// 托管node_modules目录下的静态资源
+app.use("/node_modules", express.static(path.join(__dirname, "node_modules")));
+```
+
+当托管的多个目录中存在相同的文件时，会优先返回先注册静态资源中间件目录中的文件。
+
+#### 页面中资源路径问题
+
+当在渲染一个页面中加载了相对路径的静态资源时，资源的加载路径是**相对与当前请求 URL 地址的**。例如：
+
+模版页面：
+
+```css
+body {
+  background: red;
+}
+```
+
+```html
+<!-- /views/index.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="../public/css/main.css" />
+  </head>
+  <body>
+    这里是模版首页
+  </body>
+</html>
+```
+
+渲染模版页面
+
+```js
+app.set("view engine", "ejs");
+
+// 托管资源
+app.use("/public", express.static(path.join(__dirname, "./public")));
+
+// 分别为/,/a/b,/a/b/c 渲染首页，查看页面加载后请求的css资源地址
+app.get("/", (req, res, next) => {
+  res.render("index");
+});
+app.get("/a/b", (req, res, next) => {
+  res.render("index");
+});
+app.get("/a/b/c", (req, res, next) => {
+  res.render("index");
+});
+```
+
+当访问`/`，`/a/b`时资源`main.css`能够被正确加载，访问`/a/b/c`时候，加载的 css 的请求地址为`/a/public/css/main.css`。原因分析如下：
+
+当访问`/`时，`../`还在表示根目录，所以最终的请求地址是：`/public/css/main.css`。
+
+当访问`/a/b`时，`b` 表示当前请求的文件，`../`还在表示根目录，所以最终的请求地址是：`/public/css/main.css`。
+
+当访问`/a/b/c`时，`c`表示当前的请求文件，`../`则回退到了`/a`目录下，最终请求地址为：`/a/public/css/main.css`。
+
+结论：在模版页面中引入静态资源**最好采用绝对地址**。例如，上面的例子使用`/public/css/main.css`来加载资源。
 
 ## 使用 Express 开发传统应用
 
