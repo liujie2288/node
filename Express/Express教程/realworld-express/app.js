@@ -1,9 +1,10 @@
+const path = require("path");
 const express = require("express");
 const morgan = require("morgan");
-const cors = require("cors");
+const errorhandler = require("errorhandler");
+
 const router = require("./router");
-const errorHandler = require("./middleware/error-handle");
-require("./model");
+// require("./model");
 
 // 从环境变量中读取PORT设置
 // linux 设置环境变量并启动该node服务： PORT=4010
@@ -11,16 +12,27 @@ const PORT = process.env.PORT || 3010;
 
 const app = express();
 
-app.use(morgan("dev"));
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded());
+// app.use(morgan("dev"));
+// // 接受应用内部请求的ajax接口
+// app.use(express.json());
+// app.use(express.urlencoded());
 
+// 设置默认模版引擎
+// app.set("view engine", "ejs");
 // 挂在路由
-app.use("/api", router);
+app.use(router);
 
-// 挂在统一处理服务端错误中间件
-app.use(errorHandler());
+// app.use(
+//   "/node_modules",
+//   express.static(path.join(__dirname, "./node_modules"))
+// );
+
+console.log(process.env.NODE_ENV);
+
+// 错误处理
+// if (process.env.NODE_ENV === "development") {
+app.use(errorhandler());
+// }
 
 app.listen(PORT, function () {
   console.log(`server start at http://localhost:${PORT}`);

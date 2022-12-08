@@ -1,0 +1,52 @@
+<%- include('layout/header') %>
+<div class="auth-page">
+  <div class="container page">
+    <div class="row">
+      <div class="col-md-6 offset-md-3 col-xs-12">
+        <h1 class="text-xs-center">Sign up</h1>
+        <p class="text-xs-center">
+          <a href="">Have an account?</a>
+        </p>
+
+        <% if (locals.errors) { %>
+        <ul class="error-messages">
+          <% errors.forEach(error=>{ %>
+          <li><%= error.msg %></li>
+          <% }) %>
+        </ul>
+        <% } %>
+
+        <form action="/register" method="post">
+          <fieldset class="form-group">
+            <input
+              class="form-control form-control-lg"
+              type="text"
+              name="user[username]"
+              placeholder="Your Name"
+            />
+          </fieldset>
+          <fieldset class="form-group">
+            <input
+              class="form-control form-control-lg"
+              type="text"
+              name="user[email]"
+              placeholder="Email"
+            />
+          </fieldset>
+          <fieldset class="form-group">
+            <input
+              class="form-control form-control-lg"
+              type="password"
+              name="user[password]"
+              placeholder="Password"
+            />
+          </fieldset>
+          <button type="submit" class="btn btn-lg btn-primary pull-xs-right">
+            Sign up
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('layout/footer') %>
