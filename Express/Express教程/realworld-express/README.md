@@ -74,12 +74,29 @@ app.use(express.urlencoded());
 app.use(morgan("dev"));
 ```
 
-3.
-
 配置后，控制台将输出类似：
 
 POST / 200 18.183 ms - 17
 [请求方法][请求路径][请求响应状态码][请求耗时][请求响应内容长度]
+
+3. 配置错误处理中间件，在开发时当服务器发生错误后提供的一个友好的错误提示页。
+
+```js
+const errorhandler = require("errorhandler");
+// 只在开发场景下生效
+if (process.env.NODE_ENV === "development") {
+  app.use(errorhandler());
+}
+```
+
+4. 配置模版引擎(这里使用[ejs](https://www.npmjs.com/package/ejs)，也可以选择其它如[art-template](https://www.npmjs.com/package/art-template)，[pug](https://www.npmjs.com/package/pug)等)。
+
+```js
+// 设置默认模版引擎
+app.set("view engine", "ejs");
+// 设置模版页面默认目录
+app.set("views", path.join(__dirname, "./views"));
+```
 
 完成以上步骤配置后的入口文件 app.js 代码：
 
@@ -91,16 +108,19 @@ const PORT = process.env.PORT || 3010;
 
 const app = express();
 
+// 记录请求信息
 app.use(morgan("dev"));
+// 解析请求参数
 app.use(express.json());
 app.use(express.urlencoded());
 
+// 错误处理
+if (process.env.NODE_ENV === "development") {
+  app.use(errorhandler());
+}
+
 app.get("/", function (req, res) {
   res.send("hello world");
-});
-
-app.post("/", function (req, res) {
-  res.send(req.body);
 });
 
 app.listen(PORT, function () {
@@ -108,13 +128,269 @@ app.listen(PORT, function () {
 });
 ```
 
-## 添加中间件
+## 添加页面路由
 
-## 确认页面路由
+realword 提供了[路由指南](https://realworld-docs.netlify.app/docs/specs/frontend-specs/routing)，按照指南方式配置页面路由。例如：
 
-https://realworld-docs.netlify.app/docs/specs/frontend-specs/routing
+```js
+//router/user.js
+
+// 登录页面
+router.get("/login", function (req, res) {
+  res.render("login");
+});
+```
+
+```js
+//router/index.js
+const express = require("express");
+const router = express.Router();
+
+// 首页
+router.get("/", function (req, res) {
+  res.render("index");
+});
+
+// 用户页面相关
+router.use(require("./user"));
+
+module.exports = router;
+```
 
 ## 编写模版页面
+
+realword 提供了[模版片段](https://realworld-docs.netlify.app/docs/specs/frontend-specs/routing)。
+
+### 页面头部
+
+```html
+<!-- views/layout/header.ejs -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Conduit</title>
+    <!-- Import Ionicon icons & Google Fonts our Bootstrap theme relies on -->
+    <link
+      href="//code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <link
+      href="//fonts.googleapis.com/css?family=Titillium+Web:700|Source+Serif+Pro:400,700|Merriweather+Sans:400,700|Source+Sans+Pro:400,300,600,700,300italic,400italic,600italic,700italic"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <!-- Import the custom Bootstrap 4 theme from our hosted CDN -->
+    <link rel="stylesheet" href="//demo.productionready.io/main.css" />
+  </head>
+  <body>
+    <nav class="navbar navbar-light">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">conduit</a>
+        <ul class="nav navbar-nav pull-xs-right">
+          <li class="nav-item">
+            <!-- Add "active" class when you're on that page" -->
+            <a class="nav-link active" href="">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="">
+              <i class="ion-compose"></i>&nbsp;New Article
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="">
+              <i class="ion-gear-a"></i>&nbsp;Settings
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="">Sign in</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="">Sign up</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  </body>
+</html>
+```
+
+### 页面尾部
+
+```html
+<!-- views/layout/footer.ejs -->
+<footer>
+    <div class="container">
+        <a href="/" class="logo-font">conduit</a>
+        <span class="attribution">
+          An interactive learning project from <a href="https://thinkster.io">Thinkster</a>. Code &amp; design licensed under MIT.
+        </span>
+    </div>
+</footer>
+
+</body>
+</html>
+```
+
+### 登录注册页
+
+```html
+<!-- views/login.ejs -->
+<%- include('layout/header') %>
+<div class="auth-page">
+  <div class="container page">
+    <div class="row">
+      <div class="col-md-6 offset-md-3 col-xs-12">
+        <h1 class="text-xs-center">Sign up</h1>
+        <p class="text-xs-center">
+          <a href="">Have an account?</a>
+        </p>
+
+        <% if (locals.errors) { %>
+        <ul class="error-messages">
+          <% errors.forEach(error=>{ %>
+          <li><%= error.msg %></li>
+          <% }) %>
+        </ul>
+        <% } %>
+
+        <form action="/register" method="post">
+          <fieldset class="form-group">
+            <input
+              class="form-control form-control-lg"
+              type="text"
+              name="user[username]"
+              placeholder="Your Name"
+            />
+          </fieldset>
+          <fieldset class="form-group">
+            <input
+              class="form-control form-control-lg"
+              type="text"
+              name="user[email]"
+              placeholder="Email"
+            />
+          </fieldset>
+          <fieldset class="form-group">
+            <input
+              class="form-control form-control-lg"
+              type="password"
+              name="user[password]"
+              placeholder="Password"
+            />
+          </fieldset>
+          <button type="submit" class="btn btn-lg btn-primary pull-xs-right">
+            Sign up
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('layout/footer') %>
+```
+
+### 首页
+
+```html
+<!-- views/index.ejs -->
+
+<%- include('layout/header') %>
+<div class="home-page">
+  <div class="banner">
+    <div class="container">
+      <h1 class="logo-font">conduit</h1>
+      <p>A place to share your knowledge.</p>
+    </div>
+  </div>
+
+  <div class="container page">
+    <div class="row">
+      <div class="col-md-9">
+        <div class="feed-toggle">
+          <ul class="nav nav-pills outline-active">
+            <li class="nav-item">
+              <a class="nav-link disabled" href="">Your Feed</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="">Global Feed</a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="article-preview">
+          <div class="article-meta">
+            <a href="profile.html"
+              ><img src="http://i.imgur.com/Qr71crq.jpg"
+            /></a>
+            <div class="info">
+              <a href="" class="author">Eric Simons</a>
+              <span class="date">January 20th</span>
+            </div>
+            <button class="btn btn-outline-primary btn-sm pull-xs-right">
+              <i class="ion-heart"></i> 29
+            </button>
+          </div>
+          <a href="" class="preview-link">
+            <h1>How to build webapps that scale</h1>
+            <p>This is the description for the post.</p>
+            <span>Read more...</span>
+          </a>
+        </div>
+
+        <div class="article-preview">
+          <div class="article-meta">
+            <a href="profile.html"
+              ><img src="http://i.imgur.com/N4VcUeJ.jpg"
+            /></a>
+            <div class="info">
+              <a href="" class="author">Albert Pai</a>
+              <span class="date">January 20th</span>
+            </div>
+            <button class="btn btn-outline-primary btn-sm pull-xs-right">
+              <i class="ion-heart"></i> 32
+            </button>
+          </div>
+          <a href="" class="preview-link">
+            <h1>
+              The song you won't ever stop singing. No matter how hard you try.
+            </h1>
+            <p>This is the description for the post.</p>
+            <span>Read more...</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="sidebar">
+          <p>Popular Tags</p>
+
+          <div class="tag-list">
+            <a href="" class="tag-pill tag-default">programming</a>
+            <a href="" class="tag-pill tag-default">javascript</a>
+            <a href="" class="tag-pill tag-default">emberjs</a>
+            <a href="" class="tag-pill tag-default">angularjs</a>
+            <a href="" class="tag-pill tag-default">react</a>
+            <a href="" class="tag-pill tag-default">mean</a>
+            <a href="" class="tag-pill tag-default">node</a>
+            <a href="" class="tag-pill tag-default">rails</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('layout/footer') %>
+```
+
+## 挂在路由到 app 实例中
+
+```js
+const router = require("./router");
+// 挂在路由
+app.use(router);
+```
 
 ## form 表单同步提交
 
