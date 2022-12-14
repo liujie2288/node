@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 3010;
 
 const app = express();
 
+// 请求日志中间件
 app.use(morgan("dev"));
 // 接受应用内部请求的ajax接口
 app.use(express.json());
@@ -21,15 +22,16 @@ app.use(express.urlencoded());
 app.set("view engine", "ejs");
 // 设置模版页面默认目录
 app.set("views", path.join(__dirname, "./views"));
-// 挂在路由
+
+// 挂载路由
 app.use(router);
 
+// 静态资源处理
+app.use("/public", express.static(path.join(__dirname, "./public")));
 app.use(
   "/node_modules",
   express.static(path.join(__dirname, "./node_modules"))
 );
-
-console.log(process.env.NODE_ENV);
 
 // 错误处理
 if (process.env.NODE_ENV === "development") {

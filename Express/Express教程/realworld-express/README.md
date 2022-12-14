@@ -132,29 +132,56 @@ app.listen(PORT, function () {
 
 realword 提供了[路由指南](https://realworld-docs.netlify.app/docs/specs/frontend-specs/routing)，按照指南方式配置页面路由。例如：
 
+用户相关页面路由：
+
 ```js
 //router/user.js
 
 // 登录页面
 router.get("/login", function (req, res) {
-  res.render("login");
+  // 因为注册和登录共用一个模版，所以需要传入一个变量在渲染时区分
+  res.render("login", { isLogin: true });
+});
+
+// 注册页面
+router.get("/register", function (req, res) {
+  res.render("register");
 });
 ```
+
+文章相关页面路由：
+
+```js
+//router/article.js
+
+// 首页
+router.get("/", function (req, res) {
+  res.render("index");
+});
+```
+
+添加路由入口页面，统一管理所有的路由：
 
 ```js
 //router/index.js
 const express = require("express");
 const router = express.Router();
 
-// 首页
-router.get("/", function (req, res) {
-  res.render("index");
-});
-
 // 用户页面相关
 router.use(require("./user"));
 
+// 文章页面相关
+router.use(require("./article"));
+
 module.exports = router;
+```
+
+注意，别忘记将路由挂载到 app 实例中
+
+```js
+const router = require("./router");
+// 挂载路由
+app.use(router);
 ```
 
 ## 编写模版页面
@@ -384,13 +411,26 @@ realword 提供了[模版片段](https://realworld-docs.netlify.app/docs/specs/f
 <%- include('layout/footer') %>
 ```
 
-## 挂在路由到 app 实例中
+其它页面模版前参考 realworld [模版片段](https://realworld-docs.netlify.app/docs/specs/frontend-specs/routing)。
 
-```js
-const router = require("./router");
-// 挂在路由
-app.use(router);
-```
+## 解决资源加载缓慢问题
+
+模版中提供的外部 css 资源加载缓慢，可以将其下载到本地托管。
+
+1.  新建`/public/css/main.css`文件存放`//demo.productionready.io/main.css`文件
+2.  安装 ionicons(`npm install ionicons@2.0.1`)包来替换`//code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css`文件
+3.  配置静态资源加载中间件。
+
+    ```js
+    app.use("/public", express.static(path.join(__dirname, "./public")));
+    app.use(
+      "/node_modules",
+      express.static(path.join(__dirname, "./node_modules"))
+    );
+    ```
+
+4.  修改资源引用链接`//demo.productionready.io/main.css`为`/public/css/main.css`
+5.  修改资源饮用链接`//code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css`为`/node_modules/ionicons/css/ionicons.min.css`
 
 ## form 表单同步提交
 
