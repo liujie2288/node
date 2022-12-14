@@ -3,7 +3,7 @@ const bcrypt = require("bcrypt");
 const validate = require("../middleware/validate");
 const { User } = require("../model");
 
-exports.register = validate([
+const registerRules = [
   body("user.username")
     .notEmpty()
     .withMessage("用户名不能为空")
@@ -33,7 +33,11 @@ exports.register = validate([
         return Promise.reject("邮箱已存在");
       }
     }),
-]);
+];
+
+exports.registerRules = registerRules;
+
+exports.register = validate(registerRules);
 
 exports.login = [
   validate([
