@@ -218,23 +218,23 @@ realword 提供了[模版片段](https://realworld-docs.netlify.app/docs/specs/f
         <ul class="nav navbar-nav pull-xs-right">
           <li class="nav-item">
             <!-- Add "active" class when you're on that page" -->
-            <a class="nav-link active" href="">Home</a>
+            <a class="nav-link active" href="/">Home</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="">
+            <a class="nav-link" href="/editor">
               <i class="ion-compose"></i>&nbsp;New Article
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="">
+            <a class="nav-link" href="/settings">
               <i class="ion-gear-a"></i>&nbsp;Settings
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="">Sign in</a>
+            <a class="nav-link" href="/login">Sign in</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="">Sign up</a>
+            <a class="nav-link" href="/register">Sign up</a>
           </li>
         </ul>
       </div>
@@ -269,12 +269,18 @@ realword 提供了[模版片段](https://realworld-docs.netlify.app/docs/specs/f
   <div class="container page">
     <div class="row">
       <div class="col-md-6 offset-md-3 col-xs-12">
-        <h1 class="text-xs-center">Sign up</h1>
+        <h1 class="text-xs-center">
+          <%= locals.isLogin ? "Sign in" : "Sign up" %>
+        </h1>
         <p class="text-xs-center">
-          <a href="">Have an account?</a>
+          <% if(locals.isLogin) { %>
+          <a href="/register">Need an account?</a>
+          <% } else { %>
+          <a href="/login">Have an account?</a>
+          <% } %>
         </p>
 
-        <% if (locals.errors) { %>
+        <% if (typeof(errors) !== "undefined" && errors) { %>
         <ul class="error-messages">
           <% errors.forEach(error=>{ %>
           <li><%= error.msg %></li>
@@ -283,6 +289,7 @@ realword 提供了[模版片段](https://realworld-docs.netlify.app/docs/specs/f
         <% } %>
 
         <form action="/register" method="post">
+          <% if(!locals.isLogin) { %>
           <fieldset class="form-group">
             <input
               class="form-control form-control-lg"
@@ -291,6 +298,7 @@ realword 提供了[模版片段](https://realworld-docs.netlify.app/docs/specs/f
               placeholder="Your Name"
             />
           </fieldset>
+          <% } %>
           <fieldset class="form-group">
             <input
               class="form-control form-control-lg"
@@ -308,7 +316,7 @@ realword 提供了[模版片段](https://realworld-docs.netlify.app/docs/specs/f
             />
           </fieldset>
           <button type="submit" class="btn btn-lg btn-primary pull-xs-right">
-            Sign up
+            <%= locals.isLogin ? "Sign in" : "Sign up" %>
           </button>
         </form>
       </div>
@@ -432,14 +440,30 @@ realword 提供了[模版片段](https://realworld-docs.netlify.app/docs/specs/f
 4.  修改资源引用链接`//demo.productionready.io/main.css`为`/public/css/main.css`
 5.  修改资源饮用链接`//code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css`为`/node_modules/ionicons/css/ionicons.min.css`
 
-## form 表单同步提交
+至此，应该得到了一个可以通过 nodejs 驱动的纯静态应用，存在的一下几个路由页面：
 
-```html
-<% if (locals.errors) { %>
-<ul class="error-messages">
-  <% errors.forEach(error=>{ %>
-  <li><%= error.msg %></li>
-  <% }) %>
-</ul>
-<% } %>
-```
+1. [首页](http://localhost:3010/)
+2. [登录页](http://localhost:3010/login)
+3. [注册页](http://localhost:3010/register)
+4. [设置页](http://localhost:3010/settings)
+5. [添加文章页](http://localhost:3010/editor)
+6. [个人简介页](http://localhost:3010/profile/123)
+
+## 实现用户注册功能
+
+实现注册有两种方式：
+
+1. 传统应用中 form 表单提交方式
+2. 使用 ajax 异步提交表单
+
+### 使用传统 form 表单提交数据
+
+1. 编写模版(模版已在上面的内容中给出)
+
+> 💡 提示：
+>
+> - ejs 模版中的变量必须要在 res.render()中给出，否则会报变量未定义的错误。解决方式有 2 种：a. 使用`typeof(变量名) !== "undefined"`判断后再使用该变量。例如：`if(typeof(errors) !=="undefined" && errors){  //逻辑... }`。b. 使用 express 使用在模版中提供的`locals`对象来访问变量。例如：`if(locals.error){ // 逻辑... }`
+>
+> - `express.urlencoded()`能够解析 form 表单 name 属性的嵌套语法。例如，表单中的 name 可以这样写 `name="user[username]"`
+
+2. 编写 node 处理逻辑

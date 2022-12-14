@@ -3,12 +3,18 @@
   <div class="container page">
     <div class="row">
       <div class="col-md-6 offset-md-3 col-xs-12">
-        <h1 class="text-xs-center">Sign up</h1>
+        <h1 class="text-xs-center">
+          <%= locals.isLogin ? "Sign in" : "Sign up" %>
+        </h1>
         <p class="text-xs-center">
-          <a href="">Have an account?</a>
+          <% if(locals.isLogin) { %>
+          <a href="/register">Need an account?</a>
+          <% } else { %>
+          <a href="/login">Have an account?</a>
+          <% } %>
         </p>
 
-        <% if (locals.errors) { %>
+        <% if (typeof(errors) !== "undefined" && errors) { %>
         <ul class="error-messages">
           <% errors.forEach(error=>{ %>
           <li><%= error.msg %></li>
@@ -17,6 +23,7 @@
         <% } %>
 
         <form action="/register" method="post">
+          <% if(!locals.isLogin) { %>
           <fieldset class="form-group">
             <input
               class="form-control form-control-lg"
@@ -25,6 +32,7 @@
               placeholder="Your Name"
             />
           </fieldset>
+          <% } %>
           <fieldset class="form-group">
             <input
               class="form-control form-control-lg"
@@ -42,7 +50,7 @@
             />
           </fieldset>
           <button type="submit" class="btn btn-lg btn-primary pull-xs-right">
-            Sign up
+            <%= locals.isLogin ? "Sign in" : "Sign up" %>
           </button>
         </form>
       </div>

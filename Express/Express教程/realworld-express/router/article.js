@@ -9,6 +9,10 @@ router.get("/", function (req, res) {
   res.render("index");
 });
 
+router.get("/editor", function (req, res) {
+  res.render("editor");
+});
+
 // // 创建文章
 // router.post("/", auth(), validator.createArticle, articleCtrl.createArticle);
 
