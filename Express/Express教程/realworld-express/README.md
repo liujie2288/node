@@ -421,6 +421,43 @@ realword 提供了[模版片段](https://realworld-docs.netlify.app/docs/specs/f
 
 其它页面模版前参考 realworld [模版片段](https://realworld-docs.netlify.app/docs/specs/frontend-specs/routing)。
 
+## 提取路由控制器模块
+
+为了保证代码的易读和可维护性，可以将路由对应的实业务逻辑分离到单独的模块中。例如：
+
+用户路由控制器模块：
+
+```js
+// controller/user.js
+export.showLogin = async function(req,res){
+  try {
+    res.render("login", { isLogin: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+exports.showRegister = async function (req, res, next) {
+  try {
+    res.render("login");
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ... 其它功能快
+```
+
+用户路由模块：
+
+```js
+// router/user.js
+const userCtrl = require("../controller/user");
+router.get("/login", userCtrl.showLogin);
+
+// ...其它路由
+```
+
 ## 解决资源加载缓慢问题
 
 模版中提供的外部 css 资源加载缓慢，可以将其下载到本地托管。
@@ -466,4 +503,8 @@ realword 提供了[模版片段](https://realworld-docs.netlify.app/docs/specs/f
 >
 > - `express.urlencoded()`能够解析 form 表单 name 属性的嵌套语法。例如，表单中的 name 可以这样写 `name="user[username]"`
 
-2. 编写 node 处理逻辑
+2. 编写注册控制器逻辑
+
+```js
+// exports.re;
+```

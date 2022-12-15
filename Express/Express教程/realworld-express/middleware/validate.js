@@ -1,6 +1,11 @@
 const { validationResult } = require("express-validator");
 
-exports = module.exports = (validations) => {
+exports = module.exports = (
+  validations,
+  errorCallback = (errors) => {
+    res.status(400).json({ errors: errors });
+  }
+) => {
   return async (req, res, next) => {
     await Promise.all(validations.map((validation) => validation.run(req)));
 
@@ -9,6 +14,6 @@ exports = module.exports = (validations) => {
       return next();
     }
 
-    res.status(400).json({ errors: errors.array() });
+    errorCallback(errors.array());
   };
 };

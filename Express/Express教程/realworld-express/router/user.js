@@ -7,14 +7,10 @@ const auth = require("../middleware/auth");
 const router = express.Router();
 
 // 登陆页面
-router.get("/login", function (req, res) {
-  res.render("login", { isLogin: true });
-});
+router.get("/login", userCtrl.showLogin);
 
 // 注册页面
-router.get("/register", function (req, res) {
-  res.render("login");
-});
+router.get("/register", userCtrl.showRegister);
 
 // 设置页面
 router.get("/settings", function (req, res) {
