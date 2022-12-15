@@ -440,6 +440,7 @@ module.exports = {
 1. 设计 user 数据模型：
 
 ```js
+// model/user.js
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({

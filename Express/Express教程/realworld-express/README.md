@@ -454,7 +454,7 @@ exports.showRegister = async function (req, res, next) {
 // router/user.js
 const userCtrl = require("../controller/user");
 router.get("/login", userCtrl.showLogin);
-
+router.get("/register", userCtrl.showRegister);
 // ...其它路由
 ```
 
@@ -486,16 +486,151 @@ router.get("/login", userCtrl.showLogin);
 5. [添加文章页](http://localhost:3010/editor)
 6. [个人简介页](http://localhost:3010/profile/123)
 
+## 功能实现 - 前置准备
+
+### 环境依赖
+
+- 安装[Mongodb](../../../SQL/Mongodb/README.md)数据库
+- 安装[Mongoose](../../../SQL/Mongoose/README.md)工具包（以对象模型操作 mongodb 的工具包）
+
+### 数据操作文件初始化
+
+为了方便对每个模型单独管理，可以将模型拆分到单独文件中。
+
+```shell
+├── user.js	# 用户
+├── articles.js	#
+├── xxxx.js	#
+├── index.js	# model入口文件，用户连接数据库和导出schema
+```
+
+`model/index.js`初始化数据库连接以及导出各个模块 model。
+
+```js
+// model/index.js
+const mongoose = require("mongoose");
+
+main().catch((err) => console.log("MongoDB数据库错误", err));
+
+async function main() {
+  await mongoose.connect("mongodb://localhost:27017/realworld");
+
+  console.log("MongoDB 数据库连接成功");
+}
+```
+
 ## 实现用户注册功能
 
-实现注册有两种方式：
+### 设计 user 数据模型：
 
-1. 传统应用中 form 表单提交方式
-2. 使用 ajax 异步提交表单
+```js
+// model/user.js
+const mongoose = require("mongoose");
 
-### 使用传统 form 表单提交数据
+const userSchema = new mongoose.Schema({
+  userName: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  // 个人介绍
+  bio: {
+    type: String,
+    default: null,
+  },
+  image: {
+    type: String,
+    default: null,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
-1. 编写模版(模版已在上面的内容中给出)
+module.exports = userSchema;
+```
+
+这里参考 realworld [用户注册接口](https://realworld-docs.netlify.app/docs/specs/backend-specs/endpoints#registration)设计。
+
+### 导出 User 模型
+
+在 `model/index.js` 入口文件中统一导出所有数据模型
+
+```js
+// model/index.js
+// 组织导出模型类
+module.exports = {
+  User: mongoose.model("user", require("./user")),
+  //...
+};
+```
+
+### 用户注册数据提交
+
+提交数据有两种方式：
+
+- 传统应用中 form 表单提交方式
+- 使用 ajax 异步提交表单
+
+为了更好的说明传统应用中数据交互的方式，下面会分别介绍这 2 种模式，了解到这两种模式开发时，前后端需要做的具体工作时什么样子的：
+
+#### 方式一：使用 form 表单提交数据完成注册
+
+编写 html 表单模版
+
+```html
+<% if (typeof(errors) !== "undefined" && errors) { %>
+<ul class="error-messages">
+  <% errors.forEach(error=>{ %>
+  <li><%= error %></li>
+  <% }) %>
+</ul>
+<% } %>
+
+<form action="/register" method="post">
+  <% if(!locals.isLogin) { %>
+  <fieldset class="form-group">
+    <input
+      class="form-control form-control-lg"
+      type="text"
+      name="user[username]"
+      placeholder="Your Name"
+    />
+  </fieldset>
+  <% } %>
+  <fieldset class="form-group">
+    <input
+      class="form-control form-control-lg"
+      type="text"
+      name="user[email]"
+      placeholder="Email"
+    />
+  </fieldset>
+  <fieldset class="form-group">
+    <input
+      class="form-control form-control-lg"
+      type="password"
+      name="user[password]"
+      placeholder="Password"
+    />
+  </fieldset>
+  <button type="submit" class="btn btn-lg btn-primary pull-xs-right">
+    <%= locals.isLogin ? "Sign in" : "Sign up" %>
+  </button>
+</form>
+```
 
 > 💡 提示：
 >
@@ -503,8 +638,399 @@ router.get("/login", userCtrl.showLogin);
 >
 > - `express.urlencoded()`能够解析 form 表单 name 属性的嵌套语法。例如，表单中的 name 可以这样写 `name="user[username]"`
 
-2. 编写注册控制器逻辑
+编写注册路由逻辑：
 
 ```js
-// exports.re;
+// router/user.js
+const userCtrl = require("../controller/user");
+
+router.get("/register", userCtrl.showRegister);
+
+router.post("/register", userCtrl.register);
 ```
+
+编写注册控制器逻辑：
+
+```js
+// controller/user.js
+
+exports.showRegister = async function (req, res, next) {
+  try {
+    res.render("login");
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.register = async function (req, res, next) {
+  try {
+    const { user = {} } = req.body;
+    const errors = [];
+    if (!user.username) {
+      errors.push("用户名不能为空");
+    }
+    if (!user.email) {
+      errors.push("邮箱不能为空");
+    }
+    if (!user.password) {
+      errors.push("密码不能为空");
+    }
+    if (errors.length > 0) {
+      return res.render("login", { errors });
+    }
+    // 执行数据保存到数据库操作
+    const userModel = new User(user);
+    // 数据保存到数据库中
+    await userModel.save();
+    // 注册成功，返回到登陆页，重新登录
+    res.redirect("/login");
+  } catch (err) {
+    next(err);
+  }
+};
+```
+
+#### 方式二：使用 ajax 异步提交表单数据完成注册
+
+为了快速完成开发，这里使用 vue 和 axios 来完成功能。
+
+1. 首先安装 vue， axios:
+
+```bash
+npm install vue axios
+```
+
+2. 在 footer.ejs 模版中全局引入 vue 和 axios：
+
+```html
+<script src="/node_modules/vue/dist/vue.global.prod.js"></script>
+<script src="/node_modules/axios/dist/axios.min.js"></script>
+```
+
+由于前面已经配置过加载 node_modules 下的静态资源，所以可以直接引入 node_modules 文件下的安装的工具包。
+
+3. 编写 login.ejs 模版：
+
+```html
+<ul class="error-messages">
+  <li v-for="error in errors">{{ error }}</li>
+</ul>
+
+<form @submit.prevent="handleSubmit">
+  <% if(!locals.isLogin) { %>
+  <fieldset class="form-group">
+    <input
+      class="form-control form-control-lg"
+      type="text"
+      placeholder="Your Name"
+      v-model="user.username"
+    />
+  </fieldset>
+  <% } %>
+  <fieldset class="form-group">
+    <input
+      class="form-control form-control-lg"
+      type="text"
+      placeholder="Email"
+      v-model="user.email"
+    />
+  </fieldset>
+  <fieldset class="form-group">
+    <input
+      class="form-control form-control-lg"
+      type="password"
+      placeholder="Password"
+      v-model="user.password"
+    />
+  </fieldset>
+  <button type="submit" class="btn btn-lg btn-primary pull-xs-right">
+    <%= locals.isLogin ? "Sign in" : "Sign up" %>
+  </button>
+</form>
+<script>
+  Vue.createApp({
+    data() {
+      return {
+        user: {
+          username: "",
+          email: "",
+          password: "",
+        },
+        errors: [],
+      };
+    },
+    methods: {
+      async handleSubmit() {
+        // 1. 客户端表单验证
+        // 2. 验证通过，提交表单
+        try {
+          // axios 默认提交的数据格式 application/json
+          const url =
+            window.location.pathname === "/login" ? "/login" : "/register";
+
+          const { data } = await axios.post(url, {
+            user: this.user,
+          });
+
+          // 清除错误信息
+          this.errors = [];
+
+          // 跳转到首页
+          window.location.href = "/";
+        } catch (err) {
+          if (err.response.status === 400) {
+            this.errors = err.response.data.errors;
+          }
+        }
+      },
+    },
+  }).mount("#login");
+</script>
+```
+
+4. 编写 node 处理注册数据逻辑
+
+```js
+// controller/user.js
+exports.register = async function (req, res, next) {
+  try {
+    const { user = {} } = req.body;
+    const errors = [];
+    // 1. 数据验证
+    if (!user.username) {
+      errors.push("用户名不能为空");
+    }
+    if (!user.email) {
+      errors.push("邮箱不能为空");
+    }
+    if (!user.password) {
+      errors.push("密码不能为空");
+    }
+    if (errors.length > 0) {
+      return res.status(400).json({ errors });
+    }
+    // 2. 验证通过，创建新用户
+    // 执行数据保存到数据库操作
+    let userModel = new User(user);
+    // 数据保存到数据库中
+    await userModel.save();
+    // 过滤密码字段，不应该返回到客户端
+    userModel = user.toJSON();
+    delete userModel["password"];
+    // 注册成功，返回用户信息
+    res.status(201).send({ user: userModel });
+  } catch (err) {
+    next(err);
+  }
+};
+```
+
+注意，这里在注册成功/失败后就是不直接重新渲染页面了，而是通过返回错误信息，交给前端 vue 去控制页面的渲染。
+
+### 验证逻辑优化
+
+对提交的数据进行验证是在保存数据之前的基本操作，上面的验证方式比较琐碎，可以借助三方工具包如（[validator](https://www.npmjs.com/package/validator),[joi](https://www.npmjs.com/package/joi)）来提高验证效率。
+
+下面我将使用[express-validator](https://www.npmjs.com/package/express-validator)工具来对接受的数据进行验证：
+
+```js
+const { body, validationResult } = require("express-validator");
+const { User } = require("../model");
+router.post(
+  "/register",
+  body("user.username")
+    .notEmpty()
+    .withMessage("用户名不能为空")
+    .isString()
+    .withMessage("用户名必须是字符串")
+    .bail() // 如果前面验证失败，则停止运行验证
+    // 自定义校验逻辑
+    .custom(async (username) => {
+      // 判断添加的邮箱是否重复
+      const user = await User.findOne({ username });
+      if (user) {
+        return Promise.reject("用户名已存在");
+      }
+    }),
+  body("user.password").notEmpty().withMessage("密码不能为空"),
+  body("user.email")
+    .notEmpty() // 不能为空
+    .withMessage("邮箱不能为空") // 自定义消息内容
+    .isEmail()
+    .withMessage("邮箱格式不正确")
+    .bail() // 如果前面验证失败，则停止运行验证
+    // 自定义校验逻辑
+    .custom(async (email) => {
+      // 判断添加的邮箱是否重复
+      const user = await User.findOne({ email });
+      if (user) {
+        return Promise.reject("邮箱已存在");
+      }
+    }),
+  async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    const { user = {} } = req.body;
+    // 2. 验证通过，创建新用户
+    // 执行数据保存到数据库操作
+    let userModel = new User(user);
+    // 数据保存到数据库中
+    await userModel.save();
+    // 过滤密码字段，不应该返回到客户端
+    userModel = user.toJSON();
+    delete userModel["password"];
+
+    // 3. 注册成功，返回用户信息
+    res.status(201).send({ user: userModel });
+  }
+);
+```
+
+上面的处理逻辑比较冗长，并且将验证逻辑和路由放到一起，为了代码的易读和可维护性，可以将验证器提取到单独的模块中：
+
+```js
+// validator/user.js
+const { body } = require("express-validator");
+const { User } = require("../model");
+exports.registerRules = [
+  body("user.username")
+    .notEmpty()
+    .withMessage("用户名不能为空")
+    .isString()
+    .withMessage("用户名必须是字符串")
+    .bail() // 如果前面验证失败，则停止运行验证
+    // 自定义校验逻辑
+    .custom(async (username) => {
+      // 判断添加的邮箱是否重复
+      const user = await User.findOne({ username });
+      if (user) {
+        return Promise.reject("用户名已存在");
+      }
+    }),
+  body("user.password").notEmpty().withMessage("密码不能为空"),
+  body("user.email")
+    .notEmpty() // 不能为空
+    .withMessage("邮箱不能为空") // 自定义消息内容
+    .isEmail()
+    .withMessage("邮箱格式不正确")
+    .bail() // 如果前面验证失败，则停止运行验证
+    // 自定义校验逻辑
+    .custom(async (email) => {
+      // 判断添加的邮箱是否重复
+      const user = await User.findOne({ email });
+      if (user) {
+        return Promise.reject("邮箱已存在");
+      }
+    }),
+];
+```
+
+在此基础上可以封装 `express-validator` 错误结果处理中间件，统一处理验证结果：
+
+```js
+// middleware/validate.js
+const { validationResult } = require("express-validator");
+
+module.exports = (validations) => {
+  return async (req, res, next) => {
+    await Promise.all(validations.map((validation) => validation.run(req)));
+
+    const errors = validationResult(req);
+    if (errors.isEmpty()) {
+      return next();
+    }
+
+    res.status(400).json({ errors: errors.array() });
+  };
+};
+```
+
+因此，对外就可以提供用户注册验证中间件：
+
+```js
+// validator/user.js
+const validate = require("../middleware/validate");
+exports.register = validate(registerRules);
+```
+
+在注册的路由处理中间件中，直接添加上面导出的验证中间件：
+
+```js
+// router/user.js
+const validator = require("../validator/user");
+const userCtrl = require("../controller/user");
+router.post("/register", validator.register, userCtrl.register);
+```
+
+在控制器中，只用关心验证通过后的处理逻辑：
+
+```js
+// controller/user.js
+exports.register = async function (req, res, next) {
+  try {
+    const { user = {} } = req.body;
+    // 2. 验证通过，创建新用户
+    // 执行数据保存到数据库操作
+    let userModel = new User(user);
+    // 数据保存到数据库中
+    await userModel.save();
+    // 过滤密码字段，不应该返回到客户端
+    userModel = userModel.toJSON();
+    delete userModel["password"];
+
+    // 3. 注册成功，返回用户信息
+    res.status(201).send({ user: userModel });
+  } catch (err) {
+    next(err);
+  }
+};
+```
+
+### 密码加密处理
+
+注册时的密码都是明文保存到数据库，为了用户数据的安全，需要将用户密码加密后保存到数据库中。
+
+数据加密的几种方式：
+
+1. 使用 hash（md5）加密
+2. 使用 hash（md5）加密 + 盐处理
+3. 非对称加密，使用公钥加密传输数据，使用私钥解密数据。
+4. bcrypt 库
+
+更多密码加密内容，请阅读[密码加密](../../../密码加密.md)。
+
+这里我们使用 [bcrypt](https://www.npmjs.com/package/bcrypt) 库来完成密码加密。
+
+改造 user scheme，在保存到数据库时使用 bcrypt 加密：
+
+```js
+const bcrypt = require("bcrypt");
+const userSchema = new mongoose.Schema({
+  // ...
+  password: {
+    type: String,
+    required: true,
+    select: false, // 查询信息时过滤掉密码
+    set(value) {
+      return bcrypt.hashSync(value, 10);
+    },
+  },
+  // ...
+});
+```
+
+上面在 schema 配置中添加了`select:false`来过滤**查询**到的用户信息中包含的密码字段。
+
+### 登录状态保持 - session 方案
+
+session 是一种将数据存储在服务器（内存，文件，数据库，另一台服务器等）上的方式。它会创建唯一的 session id 来与服务器存储的数据关联，当用户请求时如果请求头中的 cookie 中没有包含 session id 时，它会自动为这一次的请求的响应头中添加 cookie 设置，将创建的 session id 发送给客户端，下次请求客户端会自动携带这个 session id，因此也就能找到与这个 session id 的关联的数据信息了。
+
+#### express-session vs cookie-session
+
+express 官方提供了这两个工具库都是用于存储 session 数据的，主要的区别在于如何保存 session 数据：
+
+express-session 在服务器上存储会话数据; 它只在 cookie 本身中保存会话 ID。默认情况下，它使用内存存储。它不是为生产环境设计的。在生产中，您需要设置一个[可扩展的会话存储](https://www.npmjs.com/package/express-session#compatible-session-stores)；
+
+相比之下，cookie-session 中间件实现了 cookie 支持的存储：它将整个会话序列化到 cookie，而不仅仅是一个会话密钥。仅当会话数据相对较小且易于编码为原始值（而不是对象）时才使用它。同时，因为它将 session 数据存储在客户端，它对可以简化某些负载平衡的场景。此外，请注意 cookie 数据将对客户端可见，因此如果有任何理由使其安全或隐蔽，那么 express-session 可能是更好的选择。

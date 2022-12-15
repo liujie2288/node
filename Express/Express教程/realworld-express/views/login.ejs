@@ -1,5 +1,5 @@
 <%- include('layout/header') %>
-<div class="auth-page">
+<div class="auth-page" id="login">
   <div class="container page">
     <div class="row">
       <div class="col-md-6 offset-md-3 col-xs-12">
@@ -14,22 +14,18 @@
           <% } %>
         </p>
 
-        <% if (typeof(errors) !== "undefined" && errors) { %>
         <ul class="error-messages">
-          <% errors.forEach(error=>{ %>
-          <li><%= error.msg %></li>
-          <% }) %>
+          <li v-for="error in errors">{{ error.msg }}</li>
         </ul>
-        <% } %>
 
-        <form action="/register" method="post">
+        <form @submit.prevent="handleSubmit">
           <% if(!locals.isLogin) { %>
           <fieldset class="form-group">
             <input
               class="form-control form-control-lg"
               type="text"
-              name="user[username]"
               placeholder="Your Name"
+              v-model="user.username"
             />
           </fieldset>
           <% } %>
@@ -37,16 +33,16 @@
             <input
               class="form-control form-control-lg"
               type="text"
-              name="user[email]"
               placeholder="Email"
+              v-model="user.email"
             />
           </fieldset>
           <fieldset class="form-group">
             <input
               class="form-control form-control-lg"
               type="password"
-              name="user[password]"
               placeholder="Password"
+              v-model="user.password"
             />
           </fieldset>
           <button type="submit" class="btn btn-lg btn-primary pull-xs-right">
@@ -57,4 +53,44 @@
     </div>
   </div>
 </div>
-<%- include('layout/footer') %>
+<%- include('layout/footer',{"script":`
+<script>
+  Vue.createApp({
+    data() {
+      return {
+        user: {
+          username: "",
+          email: "",
+          password: "",
+        },
+        errors: [],
+      };
+    },
+    methods: {
+      async handleSubmit() {
+        // 1. 客户端表单验证
+        // 2. 验证通过，提交表单
+        try {
+          // axios 默认提交的数据格式 application/json
+          const url =
+            window.location.pathname === "/login" ? "/login" : "/register";
+
+          const { data } = await axios.post(url, {
+            user: this.user,
+          });
+
+          // 清除错误信息
+          this.errors = [];
+
+          // 跳转到首页
+          // window.location.href = "/";
+        } catch (err) {
+          if (err.response.status === 400) {
+            this.errors = err.response.data.errors;
+          }
+        }
+      },
+    },
+  }).mount("#login");
+</script>
+`}) %>

@@ -2,7 +2,9 @@ const path = require("path");
 const express = require("express");
 const morgan = require("morgan");
 const errorhandler = require("errorhandler");
+const session = require("express-session");
 
+const { sessionSecret } = require("./config/config.default");
 const router = require("./router");
 require("./model");
 
@@ -11,6 +13,22 @@ require("./model");
 const PORT = process.env.PORT || 3010;
 
 const app = express();
+
+app.use(
+  session({
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      // secure: true
+    },
+  })
+);
+
+// app.use(function (req, res, next) {
+//   console.log(req.session);
+//   next();
+// });
 
 // 请求日志中间件
 app.use(morgan("dev"));

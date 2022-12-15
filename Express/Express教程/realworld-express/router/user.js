@@ -1,5 +1,4 @@
 const express = require("express");
-const { validationResult } = require("express-validator");
 const userCtrl = require("../controller/user");
 const validator = require("../validator/user");
 const auth = require("../middleware/auth");
@@ -11,6 +10,9 @@ router.get("/login", userCtrl.showLogin);
 
 // 注册页面
 router.get("/register", userCtrl.showRegister);
+
+// 注册页面逻辑处理
+router.post("/register", validator.register, userCtrl.register);
 
 // 设置页面
 router.get("/settings", function (req, res) {
