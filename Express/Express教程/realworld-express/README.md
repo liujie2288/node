@@ -1296,6 +1296,8 @@ exports.logout = function (req, res, next) {
   try {
     // 清除session 用户信息
     req.session.user = null;
+    // 保存后重定向，解决页面跳转后还携带着用户数据
+    await sessionSave(req);
     // 跳转到首页
     res.redirect("/");
   } catch (error) {
@@ -1487,6 +1489,144 @@ exports.createArticle = async function (req, res, next) {
 
 ```html
 <!-- views/editor.ejs -->
+<form>
+  <fieldset>
+    <fieldset class="form-group">
+      <input
+        type="text"
+        class="form-control form-control-lg"
+        placeholder="Article Title"
+        v-model="article.title"
+      />
+    </fieldset>
+    <fieldset class="form-group">
+      <input
+        type="text"
+        class="form-control"
+        placeholder="What's this article about?"
+        v-model="article.description"
+      />
+    </fieldset>
+    <fieldset class="form-group">
+      <textarea
+        class="form-control"
+        rows="8"
+        placeholder="Write your article (in markdown)"
+        v-model="article.body"
+      ></textarea>
+    </fieldset>
+    <fieldset class="form-group">
+      <input
+        type="text"
+        class="form-control"
+        placeholder="Enter tags"
+        @keyup.enter="handleAddTag"
+      />
+      <div class="tag-list">
+        <span
+          class="tag-default tag-pill"
+          v-for="tag in article.tagList"
+          :key="tag"
+        >
+          <i class="ion-close-round"></i>
+          {{ tag }}
+        </span>
+      </div>
+    </fieldset>
+    <button
+      class="btn btn-lg pull-xs-right btn-primary"
+      type="button"
+      @click.prevent="handleSubmit"
+    >
+      Publish Article
+    </button>
+  </fieldset>
+</form>
+<script>
+  Vue.createApp({
+    data() {
+      return {
+        article: {
+          title: "",
+          description: "",
+          body: "",
+          tagList: [],
+        },
+      };
+    },
+    methods: {
+      async handleSubmit() {
+        try {
+          const { data } = await axios.post("/createArticle", {
+            article: this.article,
+          });
+          window.location.href = "/article/" + data.article._id;
+        } catch (err) {
+          window.alert("发布失败");
+        }
+      },
+      handleAddTag(e) {
+        if (!e.target.value) return;
+        this.article.tagList = [
+          ...new Set([...this.article.tagList, e.target.value]),
+        ];
+        e.target.value = "";
+      },
+    },
+  }).mount("#editor");
+</script>
+```
+
+## 实现展示文章功能
+
+1. 添加路由
+
+```js
+router.get(
+  "/article/:articleId",
+  validator.getArticle,
+  articleCtrl.showArticle
+);
+```
+
+2. 添加验证器，验证路由参数
+
+验证 mongodb ObjectID 是一个常用操作，这里封装到一个方法中。
+
+```js
+// util/validate.js
+const mongoose = require("mongoose");
+const { buildCheckFunction } = require("express-validator");
+
+exports.isValidObjectId = (location, field) => {
+  return buildCheckFunction(location)(field).custom(async (value) => {
+    if (!mongoose.isValidObjectId(value)) {
+      return Promise.reject("ID 不是一个有效的 ObejctId");
+    }
+  });
+};
+```
+
+```js
+// validator/article.js
+const validateUtil = require("../util/validate");
+exports.getArticle = validate([
+  validateUtil.isValidObjectId(["params"], "articleId"),
+]);
+```
+
+3. 实现控制器逻辑：
+
+```js
+exports.showArticle = async function (req, res, next) {
+  try {
+    const { articleId } = req.params;
+    const article = await Article.findById(articleId).populate("author");
+    res.render("article", { article });
+  } catch (error) {
+    next(error);
+  }
+};
 ```
 
 ## 实现展示文章列表功能

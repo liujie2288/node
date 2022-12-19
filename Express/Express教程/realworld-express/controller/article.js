@@ -1,27 +1,9 @@
 const { Article, User } = require("../model");
 
-// 显示首页
-exports.showIndex = function (req, res, next) {
-  try {
-    res.render("editor");
-  } catch (error) {
-    next(error);
-  }
-};
-
 // 创建文章页面
 exports.showCreateArticle = function (req, res, next) {
   try {
     res.render("editor");
-  } catch (error) {
-    next(error);
-  }
-};
-
-// 创建单个文章页面
-exports.showArticle = function (req, res, next) {
-  try {
-    res.render("article");
   } catch (error) {
     next(error);
   }
@@ -44,19 +26,12 @@ exports.createArticle = async function (req, res, next) {
   }
 };
 
-// 获取文章
-exports.getArticle = async function (req, res, next) {
+// 创建单个文章页面
+exports.showArticle = async function (req, res, next) {
   try {
-    const article = await Article.findById(req.params.articleId).populate(
-      "author"
-    );
-    if (article) {
-      res.status(200).json({
-        article: article,
-      });
-    } else {
-      res.status(404).end();
-    }
+    const { articleId } = req.params;
+    const article = await Article.findById(articleId).populate("author");
+    res.render("article", { article });
   } catch (error) {
     next(error);
   }

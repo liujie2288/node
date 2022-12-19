@@ -44,7 +44,7 @@
             >
               <img
                 class="user-pic"
-                src="https://api.realworld.io/images/smiley-cyrus.jpeg"
+                src="<%= sessionUser.image || 'https://api.realworld.io/images/smiley-cyrus.jpeg'%>"
               />
               <%= sessionUser.username %>
             </a>

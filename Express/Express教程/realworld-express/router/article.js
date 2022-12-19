@@ -5,11 +5,6 @@ const articleCtrl = require("../controller/article");
 
 const router = express.Router();
 
-router.get("/", articleCtrl.showIndex);
-
-// // 获取所有文章
-// router.get("/", articleCtrl.getAllArticle);
-
 // 显示创建文章页面
 router.get("/editor", auth(), articleCtrl.showCreateArticle);
 
@@ -22,10 +17,14 @@ router.post(
 );
 
 // 显示文章页面
-router.get("/article/:id", auth(), articleCtrl.showArticle);
+router.get(
+  "/article/:articleId",
+  validator.getArticle,
+  articleCtrl.showArticle
+);
 
-// 获取文章
-router.get("/:articleId", validator.getArticle, articleCtrl.getArticle);
+// // 获取所有文章
+// router.get("/", articleCtrl.getAllArticle);
 
 // // 更新文章
 // router.put(

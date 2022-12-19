@@ -33,7 +33,7 @@ app.use(
 );
 
 app.use(function (req, res, next) {
-  console.log(req.session.user);
+  // console.log(req.session.user);
   app.locals.sessionUser = req.session.user;
   next();
 });

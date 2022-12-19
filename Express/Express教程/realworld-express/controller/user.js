@@ -61,6 +61,26 @@ exports.showSettings = async function (req, res, next) {
   }
 };
 
+exports.settings = async function (req, res, next) {
+  try {
+    const body = req.body;
+    const sessionUser = req.session.user;
+    const user = await User.findById(sessionUser._id);
+    user.image = body.image || user.image;
+    user.username = body.username || user.username;
+    user.bio = body.bio || user.bio;
+    user.email = body.email || user.email;
+    if (body.password) {
+      user.password = body.password;
+    }
+    await user.save();
+    req.session.user = user;
+    res.redirect("/profile/" + sessionUser.username);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.showProfile = async function (req, res, next) {
   try {
     res.render("profile");
@@ -69,10 +89,12 @@ exports.showProfile = async function (req, res, next) {
   }
 };
 
-exports.logout = function (req, res, next) {
+exports.logout = async function (req, res, next) {
   try {
     // 清除session 用户信息
     req.session.user = null;
+    // 保存后重定向，解决页面跳转后还携带着用户数据
+    await sessionSave(req);
     // 跳转到首页
     res.redirect("/");
   } catch (error) {

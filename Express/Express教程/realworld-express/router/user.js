@@ -21,6 +21,9 @@ router.post("/register", validator.register, userCtrl.register);
 // 设置页面
 router.get("/settings", auth(), userCtrl.showSettings);
 
+// 更新个人信息
+router.post("/settings", auth(), userCtrl.settings);
+
 // 个人简介页面
 router.get("/profile/:username", userCtrl.showProfile);
 
