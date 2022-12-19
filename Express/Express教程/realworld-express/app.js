@@ -3,8 +3,9 @@ const express = require("express");
 const morgan = require("morgan");
 const errorhandler = require("errorhandler");
 const session = require("express-session");
+const MongoStore = require("connect-mongo");
 
-const { sessionSecret } = require("./config/config.default");
+const { sessionSecret, dbUri } = require("./config/config.default");
 const router = require("./router");
 require("./model");
 
@@ -16,19 +17,26 @@ const app = express();
 
 app.use(
   session({
-    secret: sessionSecret,
+    secret: sessionSecret, // 签发session id的密钥，可以通过uuid来随机生成
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
+    //session id 的cookie设置
     cookie: {
+      maxAge: 1000 * 60 * 60 * 24 * 2, // 过期时间，单位是毫秒
       // secure: true
     },
+    // 持久化session数据
+    store: MongoStore.create({
+      mongoUrl: dbUri,
+    }),
   })
 );
 
-// app.use(function (req, res, next) {
-//   console.log(req.session);
-//   next();
-// });
+app.use(function (req, res, next) {
+  console.log(req.session.user);
+  app.locals.sessionUser = req.session.user;
+  next();
+});
 
 // 请求日志中间件
 app.use(morgan("dev"));

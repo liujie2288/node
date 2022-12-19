@@ -1,11 +1,38 @@
 const { Article, User } = require("../model");
 
+// 显示首页
+exports.showIndex = function (req, res, next) {
+  try {
+    res.render("editor");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 创建文章页面
+exports.showCreateArticle = function (req, res, next) {
+  try {
+    res.render("editor");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 创建单个文章页面
+exports.showArticle = function (req, res, next) {
+  try {
+    res.render("article");
+  } catch (error) {
+    next(error);
+  }
+};
+
 // 创建文章
 exports.createArticle = async function (req, res, next) {
   try {
     const article = new Article(req.body.article);
     // 设置当前文章作者为当前用户
-    article.author = req.user._id;
+    article.author = req.session.user._id;
     // 填充用户信息，返回给客户端
     article.populate("author");
     await article.save();
@@ -85,7 +112,7 @@ async function articleExist(req, res, next) {
 
 async function articleOwn(req, res, next) {
   // 2. 查看文章是否是当前登录用户的
-  if (req.article.author.toString() !== req.user._id.toString()) {
+  if (req.article.author.toString() !== req.session.user._id.toString()) {
     return res.status(403).end();
   }
   next();

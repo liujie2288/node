@@ -1,5 +1,5 @@
 <%- include('layout/header') %>
-<div class="editor-page">
+<div class="editor-page" id="editor">
   <div class="container page">
     <div class="row">
       <div class="col-md-10 offset-md-1 col-xs-12">
@@ -10,6 +10,7 @@
                 type="text"
                 class="form-control form-control-lg"
                 placeholder="Article Title"
+                v-model="article.title"
               />
             </fieldset>
             <fieldset class="form-group">
@@ -17,6 +18,7 @@
                 type="text"
                 class="form-control"
                 placeholder="What's this article about?"
+                v-model="article.description"
               />
             </fieldset>
             <fieldset class="form-group">
@@ -24,6 +26,7 @@
                 class="form-control"
                 rows="8"
                 placeholder="Write your article (in markdown)"
+                v-model="article.body"
               ></textarea>
             </fieldset>
             <fieldset class="form-group">
@@ -31,10 +34,24 @@
                 type="text"
                 class="form-control"
                 placeholder="Enter tags"
+                @keyup.enter="handleAddTag"
               />
-              <div class="tag-list"></div>
+              <div class="tag-list">
+                <span
+                  class="tag-default tag-pill"
+                  v-for="tag in article.tagList"
+                  :key="tag"
+                >
+                  <i class="ion-close-round"></i>
+                  {{ tag }}
+                </span>
+              </div>
             </fieldset>
-            <button class="btn btn-lg pull-xs-right btn-primary" type="button">
+            <button
+              class="btn btn-lg pull-xs-right btn-primary"
+              type="button"
+              @click.prevent="handleSubmit"
+            >
               Publish Article
             </button>
           </fieldset>
@@ -43,4 +60,38 @@
     </div>
   </div>
 </div>
-<%- include('layout/footer') %>
+<%- include('layout/footer',{"script":`
+<script>
+  Vue.createApp({
+    data() {
+      return {
+        article: {
+          title: "",
+          description: "",
+          body: "",
+          tagList: [],
+        },
+      };
+    },
+    methods: {
+      async handleSubmit() {
+        try {
+          const { data } = await axios.post("/createArticle", {
+            article: this.article,
+          });
+          window.location.href = "/article/" + data.article._id;
+        } catch (err) {
+          window.alert("发布失败");
+        }
+      },
+      handleAddTag(e) {
+        if (!e.target.value) return;
+        this.article.tagList = [
+          ...new Set([...this.article.tagList, e.target.value]),
+        ];
+        e.target.value = "";
+      },
+    },
+  }).mount("#editor");
+</script>
+`}) %>

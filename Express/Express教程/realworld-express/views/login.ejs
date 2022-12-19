@@ -83,7 +83,7 @@
           this.errors = [];
 
           // 跳转到首页
-          // window.location.href = "/";
+          window.location.href = "/";
         } catch (err) {
           if (err.response.status === 400) {
             this.errors = err.response.data.errors;

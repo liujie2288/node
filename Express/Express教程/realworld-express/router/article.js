@@ -5,22 +5,27 @@ const articleCtrl = require("../controller/article");
 
 const router = express.Router();
 
-router.get("/", function (req, res) {
-  res.render("index");
-});
-
-router.get("/editor", function (req, res) {
-  res.render("editor");
-});
-
-// // 创建文章
-// router.post("/", auth(), validator.createArticle, articleCtrl.createArticle);
-
-// // 获取文章
-// router.get("/:articleId", validator.getArticle, articleCtrl.getArticle);
+router.get("/", articleCtrl.showIndex);
 
 // // 获取所有文章
 // router.get("/", articleCtrl.getAllArticle);
+
+// 显示创建文章页面
+router.get("/editor", auth(), articleCtrl.showCreateArticle);
+
+// 创建文章
+router.post(
+  "/createArticle",
+  auth(),
+  validator.createArticle,
+  articleCtrl.createArticle
+);
+
+// 显示文章页面
+router.get("/article/:id", auth(), articleCtrl.showArticle);
+
+// 获取文章
+router.get("/:articleId", validator.getArticle, articleCtrl.getArticle);
 
 // // 更新文章
 // router.put(

@@ -1027,6 +1027,8 @@ const userSchema = new mongoose.Schema({
 
 session 是一种将数据存储在服务器（内存，文件，数据库，另一台服务器等）上的方式。它会创建唯一的 session id 来与服务器存储的数据关联，当用户请求时如果请求头中的 cookie 中没有包含 session id 时，它会自动为这一次的请求的响应头中添加 cookie 设置，将创建的 session id 发送给客户端，下次请求客户端会自动携带这个 session id，因此也就能找到与这个 session id 的关联的数据信息了。
 
+![](./public/image/session)
+
 #### express-session vs cookie-session
 
 express 官方提供了这两个工具库都是用于存储 session 数据的，主要的区别在于如何保存 session 数据：
@@ -1034,3 +1036,457 @@ express 官方提供了这两个工具库都是用于存储 session 数据的，
 express-session 在服务器上存储会话数据; 它只在 cookie 本身中保存会话 ID。默认情况下，它使用内存存储。它不是为生产环境设计的。在生产中，您需要设置一个[可扩展的会话存储](https://www.npmjs.com/package/express-session#compatible-session-stores)；
 
 相比之下，cookie-session 中间件实现了 cookie 支持的存储：它将整个会话序列化到 cookie，而不仅仅是一个会话密钥。仅当会话数据相对较小且易于编码为原始值（而不是对象）时才使用它。同时，因为它将 session 数据存储在客户端，它对可以简化某些负载平衡的场景。此外，请注意 cookie 数据将对客户端可见，因此如果有任何理由使其安全或隐蔽，那么 express-session 可能是更好的选择。
+
+#### express-session 的使用
+
+安装 express-session：
+
+```bash
+yarn add express-session
+```
+
+在 express 实例的最前面添加该中间件：
+
+```js
+// app.js
+const session = require("express-session");
+app.use(
+  session({
+    secret: "<这里可以填写随机字符串>", // 签发session id的密钥，可以通过uuid来随机生成
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+```
+
+保存 session 数据
+
+```js
+res.session.user = {
+  id: "xxx",
+  // ... 其它等需要保存的数据
+};
+```
+
+访问 session 数据
+
+```js
+console.log(res.session.user);
+```
+
+更多示例，请查看[官方示例](https://www.npmjs.com/package/express-session#examples)。
+
+### 注册后自动保存注册用户信息
+
+封装 express-session 工具函数，方便通过 promise 来使用：
+
+```js
+exports.sessionSave = exports.sessionRegenerate = (req) =>
+  new Promise(function (resolve, reject) {
+    req.session.save(function (err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+
+exports.sessionRegenerate = (req) =>
+  new Promise(function (resolve, reject) {
+    req.session.regenerate(function (err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+```
+
+下面在完成注册后，保存用户信息到 session 中，方便用户免登录：
+
+```js
+// controller/user.js
+exports.register = async function (req, res, next) {
+  try {
+    // ... 数据库等操作逻辑
+
+    // 保存之前先重新生成session id
+    await sessionRegenerate(req);
+    // 保存用户信息
+    req.session.user = userModel;
+    // 将新的session 数据保存到存储器（内存，数据库等）中
+    await sessionSave(req);
+
+    // ... 返回响应逻辑
+  } catch (err) {
+    next(err);
+  }
+};
+```
+
+### session 过期
+
+通过设置 session id 的 cookie 的失效时间：
+
+```js
+const session = require("express-session");
+app.use(
+  session({
+    // ...
+    cookie: {
+      maxAge: 1000 * 30, // 过期时间，单位是毫秒
+    },
+  })
+);
+```
+
+### session 持久化
+
+session 数据在每次应用重启后会丢失，可以借助[connect-mongo](https://www.npmjs.com/package/connect-mongo)将 session 数据存储在数据库中。
+
+```js
+const MongoStore = require("connect-mongo");
+app.use(
+  session({
+    // 持久化session数据
+    store: MongoStore.create({
+      mongoUrl: "mongodb://localhost:27017/realworld",
+    }),
+  })
+);
+```
+
+以上配置后，connect-mongo 会在数据库中自动创建 sessions 集合存储 session 数据。退出应用程序再启动也能还原之前存储的 session 数据。
+
+### 处理头部内容展示
+
+头部导航区域需要在登录和未登录情况下区分展示。
+
+因为我们每个页面模版都使用了头部，在每次渲染模版都需要传递用户信息比较繁琐，express 提供了[locals](http://expressjs.com/en/4x/api.html#app.locals)属性挂载渲染模版用到的成员，而不需要在`res.render`不同页面时手动传递。
+
+```js
+app.use(function (req, res, next) {
+  app.locals.sessionUser = req.session.user;
+  next();
+});
+```
+
+使用的当前用户信息渲染头部导航区：
+
+```html
+<nav class="navbar navbar-light">
+  <div class="container">
+    <a class="navbar-brand" href="/">conduit</a>
+    <ul class="nav navbar-nav pull-xs-right">
+      <li class="nav-item">
+        <!-- Add "active" class when you're on that page" -->
+        <a class="nav-link active" href="/">Home</a>
+      </li>
+      <% if (sessionUser) { %>
+      <li class="nav-item">
+        <a class="nav-link" href="/editor">
+          <i class="ion-compose"></i>&nbsp;New Article
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/settings">
+          <i class="ion-gear-a"></i>&nbsp;Settings
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          class="nav-link ng-binding"
+          href="/profile/<%= sessionUser.username %>"
+        >
+          <img
+            class="user-pic"
+            src="https://api.realworld.io/images/smiley-cyrus.jpeg"
+          />
+          <%= sessionUser.username %>
+        </a>
+      </li>
+      <% } else { %>
+      <li class="nav-item">
+        <a class="nav-link" href="/login">Sign in</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/register">Sign up</a>
+      </li>
+      <% } %>
+    </ul>
+  </div>
+</nav>
+```
+
+### 页面权限访问
+
+添加权限访问中间件，通过判断 session user 是否存在来决定继续执行还是返回到登录页。
+
+```js
+// middleware/auth.js
+module.exports = () => (req, res, next) => {
+  // 检查有没有sessionUser
+  if (req.session.user) {
+    return next();
+  }
+  // 没有登录跳转到登录页
+  res.redirect("/login");
+};
+```
+
+在需要权限访问的页面前添加该中间件：
+
+```js
+// router/article.js
+const auth = require("../middleware/auth");
+router.get("/editor", auth(), function (req, res) {
+  res.render("editor");
+});
+```
+
+对于像登录和注册页面，当用户登录后再访问可以要求重定向到首页：
+
+```js
+// middleware/no-auth.js
+module.exports = () => (req, res, next) => {
+  if (req.session.user) {
+    return res.redirect("/login");
+  }
+  next();
+};
+```
+
+在登录和注册页面前添加该中间件：
+
+```js
+// router/user.js
+const noAuth = require("../middleware/no-auth");
+// 登陆页面
+router.get("/login", noAuth(), userCtrl.showLogin);
+
+// 注册页面
+router.get("/register", noAuth(), userCtrl.showRegister);
+```
+
+## 实现用户退出功能
+
+添加退出按钮：
+
+```html
+<!-- views/settings.ejs -->
+<a href="/logout">
+  <button class="btn btn-outline-danger">Or click here to logout.</button>
+</a>
+```
+
+添加退出功能路由：
+
+```js
+//router/user.js
+router.get("/logout", userCtrl.logout);
+```
+
+添加退出功能控制器逻辑：
+
+```js
+//controller/user.js
+exports.logout = function (req, res, next) {
+  try {
+    // 清除session 用户信息
+    req.session.user = null;
+    // 跳转到首页
+    res.redirect("/");
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+## 实现用户登录功能
+
+验证用户登录提交的用户名和密码：
+
+```js
+// validator/user.js
+exports.login = [
+  validate([
+    body("user.email").notEmpty().withMessage("邮箱不能为空"),
+    body("user.password").notEmpty().withMessage("密码不能为空"),
+  ]),
+  //上面非空验证通过后，再确认用户名是否存在
+  validate([
+    body("user.email").custom(async (email, { req }) => {
+      // 因为model中select:false,所以这里需要通过populate把密码填充回来
+      const user = await User.findOne({ email }).populate("password");
+      if (!user) {
+        return Promise.reject("邮箱不存在");
+      }
+      // 存在则挂载用户信息方便接下来的中间件使用
+      req.user = user;
+    }),
+  ]),
+  // 用户名存在后，验证该用户的密码和传递的密码是否一致
+  validate([
+    body("user.password").custom(async (password, { req }) => {
+      if (!bcrypt.compareSync(password, req.user.password)) {
+        return Promise.reject("密码不正确");
+      }
+    }),
+  ]),
+];
+```
+
+添加登录功能路由：
+
+```js
+//router/user.js
+const validator = require("../validator/user");
+router.post("/login", validator.login, userCtrl.login);
+```
+
+添加登录控制器逻辑：
+
+```js
+// controller/user.js
+exports.login = function (req, res, next) {
+  try {
+    // 保存用户数据到session中
+    // req.user在前面验证器中设置了
+    req.session.user = req.user;
+    // 返回用户信息
+    res.status(200).json({ user: req.user });
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+前台 ajax 接受到成功响应后跳转到首页：
+
+```js
+// views/login.ejs
+
+const url = window.location.pathname === "/login" ? "/login" : "/register";
+
+const { data } = await axios.post(url, {
+  user: this.user,
+});
+
+// 清除错误信息
+this.errors = [];
+
+// 跳转到首页
+window.location.href = "/";
+```
+
+## 实现添加文章功能
+
+1. 设计 article 数据模型([查看官方文档](https://realworld-docs.netlify.app/docs/specs/backend-specs/api-response-format#single-article))：
+
+```js
+// model/article.js
+const mongoose = require("mongoose");
+const baseModel = require("./base-model");
+
+const articleSchema = new mongoose.Schema({
+  // 处理后的文章标题，文章ID
+  slug: {
+    type: String,
+  },
+  title: {
+    type: String,
+    required: true,
+  },
+  description: {
+    type: String,
+    required: true,
+  },
+  body: {
+    type: String,
+    required: true,
+  },
+  tagList: {
+    type: [String],
+  },
+  // 是否收藏
+  favorited: {
+    type: Boolean,
+  },
+  // 收藏数量
+  favoritesCount: {
+    type: Number,
+    default: 0,
+  },
+  // 不能直接存储用户信息，如果用户信息变了，其它使用了地方都得变，不合理
+  // 存储用户ID，查询时使用 .populate 填充用户信息
+  author: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user",
+    required: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+module.exports = articleSchema;
+```
+
+注意： author 字段是存储的用户的 id，然后通过`ref`指向 user 模型，这样就与 user 表建立关联。
+
+2. 验证用户提交的文章数据:
+
+```js
+// validator/article.js
+exports.createArticle = validate([
+  body("article.title").notEmpty().withMessage("文章标题不能为空"),
+  body("article.description").notEmpty().withMessage("文章摘要不能为空"),
+  body("article.body").notEmpty().withMessage("文章内容不能为空"),
+]);
+```
+
+3. 添加路由
+
+```js
+// router/article.js
+const auth = require("../middleware/auth");
+const validator = require("../validator/article");
+const articleCtrl = require("../controller/article");
+router.post("/", auth(), validator.createArticle, articleCtrl.createArticle);
+```
+
+4. 添加对应控制器处理逻辑
+
+```js
+// controller/article.js
+exports.createArticle = async function (req, res, next) {
+  try {
+    const article = new Article(req.body.article);
+    // 设置当前文章作者为当前用户
+    article.author = req.user._id;
+    // 填充用户信息，返回给客户端
+    article.populate("author");
+    await article.save();
+    res.status(200).json({
+      article: article,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+5. 前端 ajax 提交创建文章数据
+
+```html
+<!-- views/editor.ejs -->
+```
+
+## 实现展示文章列表功能

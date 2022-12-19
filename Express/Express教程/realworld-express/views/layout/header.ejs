@@ -26,6 +26,7 @@
             <!-- Add "active" class when you're on that page" -->
             <a class="nav-link active" href="/">Home</a>
           </li>
+          <% if (sessionUser) { %>
           <li class="nav-item">
             <a class="nav-link" href="/editor">
               <i class="ion-compose"></i>&nbsp;New Article
@@ -37,11 +38,25 @@
             </a>
           </li>
           <li class="nav-item">
+            <a
+              class="nav-link ng-binding"
+              href="/profile/<%= sessionUser.username %>"
+            >
+              <img
+                class="user-pic"
+                src="https://api.realworld.io/images/smiley-cyrus.jpeg"
+              />
+              <%= sessionUser.username %>
+            </a>
+          </li>
+          <% } else { %>
+          <li class="nav-item">
             <a class="nav-link" href="/login">Sign in</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="/register">Sign up</a>
           </li>
+          <% } %>
         </ul>
       </div>
     </nav>
