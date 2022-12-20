@@ -22,7 +22,7 @@ app.use(
     saveUninitialized: false,
     //session id 的cookie设置
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 2, // 过期时间，单位是毫秒
+      maxAge: 1000 * 60 * 60 * 24 * 1, // 过期时间，单位是毫秒
       // secure: true
     },
     // 持久化session数据
@@ -35,6 +35,7 @@ app.use(
 app.use(function (req, res, next) {
   // console.log(req.session.user);
   app.locals.sessionUser = req.session.user;
+  app.locals.curUrl = req.url;
   next();
 });
 

@@ -40,11 +40,11 @@ exports.register = async function (req, res, next) {
     userModel = userModel.toJSON();
     delete userModel["password"];
     // 3. session保存登录用户信息
-    // 保存之前先重新生成session id
+    // 保存之前先重新生成session id,防止会话固定
     await sessionRegenerate(req);
     // 保存用户信息
     req.session.user = userModel;
-    // 将新的session id设置到请求头中发送给客户端
+    // 将新的session 数据保存到存储器（内存，数据库等）中，该方法会在响应结束前自动调用，但是某些场景下（重定向，长链接，websocked中），需要手动手动调用
     // await sessionSave(req);
     // 4. 注册成功，返回用户信息
     res.status(201).send({ user: userModel });
@@ -93,7 +93,7 @@ exports.logout = async function (req, res, next) {
   try {
     // 清除session 用户信息
     req.session.user = null;
-    // 保存后重定向，解决页面跳转后还携带着用户数据
+    // 保存后再重定向到首页，解决页面跳转后还携带着用户数据
     await sessionSave(req);
     // 跳转到首页
     res.redirect("/");

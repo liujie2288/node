@@ -149,6 +149,17 @@ router.get("/register", function (req, res) {
 });
 ```
 
+首页相关路由：
+
+```js
+//router/home.js
+
+// 首页
+router.get("/", function (req, res) {
+  res.render("index");
+});
+```
+
 文章相关页面路由：
 
 ```js
@@ -166,6 +177,9 @@ router.get("/", function (req, res) {
 //router/index.js
 const express = require("express");
 const router = express.Router();
+
+// 首页相关
+router.use(require("./home"));
 
 // 用户页面相关
 router.use(require("./user"));
@@ -584,7 +598,7 @@ module.exports = {
 - 传统应用中 form 表单提交方式
 - 使用 ajax 异步提交表单
 
-为了更好的说明传统应用中数据交互的方式，下面会分别介绍这 2 种模式，了解到这两种模式开发时，前后端需要做的具体工作时什么样子的：
+为了更好的说明传统应用中数据交互的方式，下面会分别介绍这 2 种模式，了解到这两种模式开发时，前后端需要做的具体工作是什么样子的：
 
 #### 方式一：使用 form 表单提交数据完成注册
 
@@ -1112,11 +1126,11 @@ exports.register = async function (req, res, next) {
   try {
     // ... 数据库等操作逻辑
 
-    // 保存之前先重新生成session id
+    // 保存之前先重新生成session id,防止会话固定
     await sessionRegenerate(req);
     // 保存用户信息
     req.session.user = userModel;
-    // 将新的session 数据保存到存储器（内存，数据库等）中
+    // 将新的session 数据保存到存储器（内存，数据库等）中，该方法会在响应结束前自动调用，但是某些场景下（重定向，长链接，websocked中），需要手动手动调用
     await sessionSave(req);
 
     // ... 返回响应逻辑
@@ -1296,7 +1310,7 @@ exports.logout = function (req, res, next) {
   try {
     // 清除session 用户信息
     req.session.user = null;
-    // 保存后重定向，解决页面跳转后还携带着用户数据
+    // 保存后再重定向到首页，解决页面跳转后还携带着用户数据
     await sessionSave(req);
     // 跳转到首页
     res.redirect("/");
@@ -1629,4 +1643,114 @@ exports.showArticle = async function (req, res, next) {
 };
 ```
 
-## 实现展示文章列表功能
+## 实现展示首页文章列表功能
+
+添加路由：
+
+```js
+//router/home.js
+const homeCtrl = require("../controller/home");
+// 显示首页
+router.get("/", homeCtrl.showIndex);
+```
+
+添加控制器逻辑：
+
+```js
+// /controller/home.js
+const { Article } = require("../model");
+// 显示首页
+exports.showIndex = async function (req, res, next) {
+  try {
+    const { pn = 1, size = 2 } = req.query;
+    const [feedsCount, feeds] = await Promise.all([
+      Article.find({}).countDocuments(),
+      Article.find({})
+        .populate("author")
+        .skip((pn - 1) * size)
+        .limit(size)
+        .sort({ createdAt: -1 }), // 按降序排序（-1降序，1升序），最新的文章在最前面
+    ]);
+    res.render("index", {
+      feeds: feeds || [],
+      total: feedsCount,
+      pages: Math.ceil(feedsCount / size),
+      pn,
+      size,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+3. 渲染模版
+
+渲染文章列表：
+
+```html
+<% feeds.forEach(feed=>{ %>
+
+<div class="article-preview">
+  <div class="article-meta">
+    <a href="profile.html"><img src="http://i.imgur.com/Qr71crq.jpg" /></a>
+    <div class="info">
+      <a href="/profile/<%= feed.author.username %>" class="author"
+        ><%= feed.author.username %></a
+      >
+      <span class="date"><%= feed.createdAt %></span>
+    </div>
+    <button class="btn btn-outline-primary btn-sm pull-xs-right">
+      <i class="ion-heart"></i> 29
+    </button>
+  </div>
+  <a href="/article/<%= feed._id %>" class="preview-link">
+    <h1><%= feed.title %></h1>
+    <p><%= feed.description %></p>
+    <span>Read more...</span>
+    <% if(feed.tagList) { %>
+    <ul class="tag-list">
+      <% feed.tagList.forEach(tag=>{%>
+      <li class="tag-default tag-pill tag-outline"><%= tag %></li>
+      <%})%>
+    </ul>
+    <% } %>
+  </a>
+</div>
+<% }) %>
+```
+
+渲染分页：
+
+```html
+<ul class="pagination">
+          <% for(var i=0;i<pages; i++ ){ %>
+          <li class="page-item <%= i+1 == pn ?'active':''%>">
+            <a class="page-link" href="?pn=<%= i+1 %>"><%= i+1 %></a>
+          </li>
+          <% } %>
+</ul>
+```
+
+## 部署
+
+请参见[部署文档](../../../Node部署.md)
+
+## 说明
+
+以上实现了 realworld 的网站的大部分功能，因为剩下的功能大体的实现思路都差不多，所以就不往下继续了，有兴趣的小伙伴可以继续完成剩余功能。
+
+以上文章的详细实现可以查看源码（因为笔记的原因，源码会比文档更为详细和全面一些）。
+
+## 总结
+
+文章演示了如何使用 Express + Mongoose + ejs 来完成 realworld 网站的开发。其中涉及到的功能点：
+
+- node 应用目录结构规范
+- node 与 mongoose 结合使用
+- ejs 模版引擎的使用
+- 密码的加密处理(bcrypt)
+- 会话机制（express-session）
+- ...
+
+该项目帮助我们快速了解 nodejs 应用开发，为后面开发其它 nodejs 应用提供了基础以及模版。
