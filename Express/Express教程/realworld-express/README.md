@@ -1734,7 +1734,7 @@ exports.showIndex = async function (req, res, next) {
 
 ## 部署
 
-请参见[部署文档](../../../Node部署.md)
+请参见[部署文档](../../../Node部署/README.md)
 
 ## 说明
 
