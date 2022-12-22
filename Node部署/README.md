@@ -34,11 +34,44 @@
 
 ## 服务器远程连接
 
-SSH 连接
+- SSH 连接
+- 云服务器网站提供的远程连接
+- FTP 工具连接
+
+常用的方式是通过 SSH 连接：
+
+```bash
+ssh root@<你服务器的IP地址>
+```
+
+输入密码后，登录服务器。
+
+### 实现 SSH 免密登录：
+
+首先查看本机`~/.ssh`目录下是否存在`id_rsa.pub`文件。没有的需要先生成：
+
+```bash
+ssh-keygen
+```
+
+根据提示一路回车确认（不用输入密码，否则在发起连接时需要输入创建 ssh 时填写的密码），会自动创建公钥`id_rsa.pub`和私钥`id_rsa`文件。
+
+![](./ssh-create.png)
+
+然后将上面生成的公钥文件(`id_rsa.pub`)内容追加到服务器`~/.ssh/authorized_keys`文件中。或者使用 `ssh-copy-id` 命令完成追加:
+
+```bash
+ssh-copy-id root@<你服务器的IP地址>
+```
+
+完成后，再次使用 ssh 测试登录：
+
+![](./ssh-nopwd-login.png)
 
 ### 参考资料
 
 - [阮一峰 SSH 远程登录](https://www.ruanyifeng.com/blog/2011/12/ssh_remote_login.html)
+- [阮一峰 Linux 服务器的初步配置流程](http://www.ruanyifeng.com/blog/2014/03/server_setup.html)
 - [从 0 到 1 实现记账本](https://juejin.cn/book/6966551262766563328/section/6967229569954742285)
 
 ## 环境安装
@@ -128,7 +161,62 @@ npm install -g pm2
 pm2 -v
 ```
 
-### MongoDB 环境安装
+用 pm2 启动 node 服务
+
+```bash
+pm2 start <入口文件>  -n <项目名称>
+```
+
+### 安装 MongoDB
+
+参考[官方文档](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-red-hat/)安装指南：
+
+1.  配置包管理系统 ( yum)：创建一个`/etc/yum.repos.d/mongodb-org-6.0.repo`文件。
+
+```text
+[mongodb-org-6.0]
+name=MongoDB Repository
+baseurl=https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/6.0/x86_64/
+gpgcheck=1
+enabled=1
+gpgkey=https://www.mongodb.org/static/pgp/server-6.0.asc
+```
+
+2. 安装 MongoDB 包：`sudo yum install -y mongodb-org`
+3. 启动 Mongodb：`sudo systemctl start mongod`
+
+更多控制命令：
+
+```bash
+# 验证MongoDb是否已成功启动
+sudo systemctl status mongod
+# 确保mongodb在系统重启后启用
+sudo systemctl enable mongod
+# 停止mongodb
+sudo systemctl stop mongod
+# 重启mongodb
+sudo systemctl restart mongod
+# 开始使用mongodb
+mongosh
+```
+
+### 安装 Nginx
+
+```bash
+yum install nginx
+```
+
+> 如果安装时报错“无可用的包”，可以尝试以下解决方案：
+>
+> - https://blog.csdn.net/weixin_45861372/article/details/115724151
+> - https://www.cnblogs.com/bretzhao/p/16229883.html
+
+检查是否安装成功：
+
+```bash
+# 安装成功，会打印出 nginx 版本号。
+nginx -v
+```
 
 ## 代码上传
 
