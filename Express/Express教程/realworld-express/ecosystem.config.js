@@ -3,6 +3,7 @@ module.exports = {
     {
       name: "realworld-express",
       script: "app.js",
+      instances: "max",
     },
   ],
   deploy: {
