@@ -2,6 +2,9 @@
 
 ## 购买服务器
 
+- 云服务器
+- 轻量应用服务器
+
 ### 云服务器
 
 云服务器厂商有阿里云，腾讯云，华为云，百度云，Vultr 等。下面以阿里云来说：
@@ -172,8 +175,8 @@ pm2 start <入口文件>  -n <项目名称>
 ```bash
 pm2 list 查看启动的应用
 pm2 logs 查看当前信息
-pm2 stop <name> 停止<name>进程
-pm2 delete <name> 删除<name>进程
+pm2 stop <app_name> 停止<app_name>进程
+pm2 delete <app_name> 删除<app_name>进程
 ```
 
 更多 PM2 介绍，请查看[这里](../PM2/README.md)
@@ -376,16 +379,76 @@ nginx -t
 nginx -s reload
 ```
 
-## 自动部署
+## 使用 pm2 自动部署
 
-> 使用自动部署前需要将服务器的 ssh 公钥添加到 github/gitlab 仓库中。
+### 前提
+
+- 需要本地电脑配置[服务器免密登录](#实现-ssh-免密登录)
+- 需要将服务器的 ssh 公钥添加到 github/gitlab 仓库中
+- 需要远程服务器安装了 pm2
+
+### 部署配置
+
+```js
+// ecosystem.config.js
+module.exports = {
+  // pm2 服务启动配置
+  apps: [
+    {
+      name: "realworld-express",
+      script: "app.js",
+      instances: "max",
+    },
+  ],
+  // pm2 部署配置
+  deploy: {
+    // 正是环境部署配置
+    prod: {
+      user: "root",
+      host: "47.243.206.107",
+      repo: "git@github.com:liujie2288/node.git",
+      ref: "origin/main",
+      path: "/www/wwwroot",
+      "post-deploy":
+        "git reset --hard && git checkout main && git pull && rm -rf ../realworld-express &&   cp -rf ./Express/Express教程/realworld-express  ../realworld-express && cd ../realworld-express && npm install --omit=dev && pm2 startOrReload ecosystem.config.js",
+      env: {
+        NODE_ENV: "production",
+      },
+    },
+  },
+};
+```
+
+- `user`: 远程服务器登录用户名
+- `host`: 远程服务器 IP 地址
+- `repo`: 代码仓库地址
+- `ref`: 代码仓库分支
+- `path`: 远程服务器拉取代码仓库存放在服务器中的地址
+- `post-deploy`: pm2 部署完成后执行的脚本
+- `env`: 部署脚本执行时的环境变量
+
+### 部署应用
+
+应用首次部署之前需要先初始化项目：
+
+```bash
+pm2 deploy prod setup
+```
+
+开始部署：
+
+```bash
+p2m deploy prod
+```
+
+### 部署回滚
+
+如果需要回滚到以前的部署，您可以使用以下 revert 选项：
+
+```bash
+pm2 deploy production revert 1
+```
+
+更多细节参考[官方文档](https://pm2.keymetrics.io/docs/usage/deployment/)
 
 ## 配置 HTTPS
-
-```
-
-```
-
-```
-
-```
