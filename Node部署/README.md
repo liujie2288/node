@@ -167,6 +167,17 @@ pm2 -v
 pm2 start <入口文件>  -n <项目名称>
 ```
 
+其它常用命令：
+
+```bash
+pm2 list 查看启动的应用
+pm2 logs 查看当前信息
+pm2 stop <name> 停止<name>进程
+pm2 delete <name> 删除<name>进程
+```
+
+更多 PM2 介绍，请查看[这里](../PM2/README.md)
+
 ### 安装 MongoDB
 
 参考[官方文档](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-red-hat/)安装指南：
@@ -218,7 +229,7 @@ yum install nginx
 nginx -v
 ```
 
-## 代码上传
+## 代码上传并部署
 
 代码上传有以下几种方式：
 
@@ -226,10 +237,155 @@ nginx -v
 - ftp （可以在服务器和本地电脑之间可视化上传和下载文件，操作简单）
 - scp 命令（以命令行的方式上传文件，使用方便）
 
-这里就直接使用之前开发的 [realword-express](https://github.com/liujie2288/node) 来演示。
+下面使用 git 来部署，没有安装 git 需要先安装 git:
 
-## 手动部署
+```bash
+# 安装前先检查一下git是否安装
+git --version
+# 安装git
+yum install git
+```
+
+这里就直接使用之前开发的 [realword-express](https://github.com/liujie2288/node) 来演示。首先克隆项目：
+
+![](./git-clone.png)
+
+因为项目代码存放到一个大的仓库中，这里就将它直接拷贝出来：
+
+![](./cp-project.png)
+
+然后安装项目依赖：
+
+![](./npm-install.png)
+
+安装完成后，我们使用 pm2 运行程序：
+
+```base
+pm2 start app.js -i max -n realworld-express
+```
+
+这里因为我的服务器是双核的，所以启动了 2 个实例：
+
+![](./pm2-start.png)
+
+然后本地访问一下，程序是否可以正常访问到(这里我的程序是启动的在 3010 端口上的)：
+
+```bash
+curl http://localhost:3010
+```
+
+如果想要在本地浏览器访问程序，需要在服务器防火墙（云服务器则是安全组）中放开 3010 端口：
+
+![](./firewall-port.png)
+
+> 如果你的轻量服务器安装了宝塔面板，则需要去到宝塔面板安全- > 防火墙。放行端口 3010
+
+成功访问：
+
+![](./visit-success.png)
+
+## 前端静态资源服务部署
+
+现在的大多数前端应用都是通过 vue，react 等开发的单页，部署时需要部署构建好的静态资源。可以使用以下方式部署这些静态资源：
+
+- ngnix
+- node
+- apache
+- iis
+- 更多部署实例可参考[文档](https://github.com/vuejs/router/blob/main/packages/docs/zh/guide/essentials/history-mode.md#%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%85%8D%E7%BD%AE%E7%A4%BA%E4%BE%8B)
+
+这里使用 node 的[connect-history-api-fallback](https://www.npmjs.com/package/connect-history-api-fallback)工具包。
+
+首先安装：
+
+```bash
+yarn add connect-history-api-fallback
+```
+
+使用：
+
+```js
+var history = require("connect-history-api-fallback");
+var connect = require("connect");
+
+var app = connect().use(history()).listen(3000);
+```
+
+或者在 express 使用使用：
+
+```js
+var express = require("express");
+
+var app = express();
+app.use(history());
+```
+
+更多配置项参考官方[文档](https://github.com/bripkens/connect-history-api-fallback#options)
+
+## 域名解析 & nginx 代理转发
+
+上面的部署的代码可以通过 ip 的方式访问，要想通过域名访问项目需要先购买域名，然后配置域名解析后，才能问访问。
+
+### 购买域名
+
+购买域名许多云服务厂商都有提供，[阿里云](https://wanwang.aliyun.com/?spm=5176.13830350.J_3207526240.34.12595aef07pNXk),[腾讯云](https://dnspod.cloud.tencent.com/)等，可以自由选择。
+
+### 域名解析
+
+域名购买成功后，就需要把域名解析到你之前购买的服务器 ip 地址。
+
+下面以我在阿里云购买的域名：`www.liujie2288.com`，服务器地址：`47.243.206.10`演示。
+
+进入域名控制台 -> 域名列表：
+
+![](./domain-list.png)
+
+进入解析设置，添加一条解析记录：
+
+![](./domain-resolve.png)
+
+解析成功后，我们就可以通过域名访问：[http://www.liujie2288.com:3010](http://www.liujie2288.com:3010)
+
+> 域名解析到国内的服务器，域名需要备案才能正常访问，我的服务器因为是在香港，所以无需域名无需备案就可以访问。
+
+### 消除端口号
+
+现在的访问路径中还存在端口号，可以使用 nginx 反向代理去除 url 中的端口号。
+
+找到 nginx 配置文件(`nginx -t`)，添加以下配置：
+
+```nginx
+server {
+    listen 80;
+    server_name www.liujie2288.com;
+    location / {
+        proxy_pass http://127.0.0.1:3010;
+    }
+}
+```
+
+检查配置文件是否正确：
+
+```bash
+nginx -t
+```
+
+重启 nginx 服务：
+
+```bash
+nginx -s reload
+```
 
 ## 自动部署
 
+> 使用自动部署前需要将服务器的 ssh 公钥添加到 github/gitlab 仓库中。
+
 ## 配置 HTTPS
+
+```
+
+```
+
+```
+
+```
