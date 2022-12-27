@@ -325,6 +325,8 @@ app.use(history());
 
 更多配置项参考官方[文档](https://github.com/bripkens/connect-history-api-fallback#options)
 
+> 使用纯 nodejs 部署可以参考[这篇文章](https://segmentfault.com/a/1190000010205995)
+
 ## 域名解析 & nginx 代理转发
 
 上面的部署的代码可以通过 ip 的方式访问，要想通过域名访问项目需要先购买域名，然后配置域名解析后，才能问访问。
@@ -452,3 +454,39 @@ pm2 deploy production revert 1
 更多细节参考[官方文档](https://pm2.keymetrics.io/docs/usage/deployment/)
 
 ## 配置 HTTPS
+
+### 申请 SSL 证书
+
+申请免费证书的地方有很多，阿里云，腾讯云等，这里使用阿里云演示。
+
+1. 首先来到[阿里云数字证书管理服务](https://www.aliyun.com/product/cas?spm=5176.19720258.J_3207526240.53.413976f4mMxSkn)进入[控制台](https://yundun.console.aliyun.com/?spm=5176.7968328.J_8413632810.4.364865c3mFH3Lr&p=cas#/overview)
+2. 选择 SSL 证书
+3. 进入免费证书选项卡
+4. 立即购买证书（没有证书的需要先购买，现在阿里云 20 个免费证书是不收取费用的）
+5. 创建证书，点击证书申请填写申请信息
+6. 进入下一步验证（阿里云购买的域名，系统会自动添加解析记录到域名的解析设置中，其它平台购买的域名需要手动添加一条解析记录）
+7. 提交申请，等待平台签发
+
+![](./ssl-buy.png)
+![](./ssl-create.png)
+![](./ssl-verification.png)
+
+### 下载 SSL 证书
+
+点击 下载 按钮，选择对应服务器证书（这里我选择的 nginx）,同时阿里云提供了服务器安装 ssl 的详细帮助文档。。
+
+![](./ssl-download.png)
+
+下载后的文件包含了一个 key 和一个 pem 文件。
+
+![](./ssl-files.png)
+
+### 安装 SSL 证书
+
+## 参考链接
+
+- [nodejs 服务器部署教程](https://segmentfault.com/a/1190000010098126)
+- [web-deploy](https://github.com/wmui/web-deploy)
+- [node 服务开发和服务器部署（node.js+koa2+pm2+nginx）教程](https://juejin.cn/post/6844904080414867469)
+- [node 开发和部署，从零到用域名访问系列教程](https://www.bilibili.com/video/BV1TE411E7uD?p=2&vd_source=7b645b98515ccbf1eb6818e68d373871)
+- [从 0 到 1 实现记账本](https://juejin.cn/book/6966551262766563328/section/6967229569954742285)
