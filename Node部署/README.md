@@ -75,7 +75,6 @@ ssh-copy-id root@<你服务器的IP地址>
 
 - [阮一峰 SSH 远程登录](https://www.ruanyifeng.com/blog/2011/12/ssh_remote_login.html)
 - [阮一峰 Linux 服务器的初步配置流程](http://www.ruanyifeng.com/blog/2014/03/server_setup.html)
-- [从 0 到 1 实现记账本](https://juejin.cn/book/6966551262766563328/section/6967229569954742285)
 
 ## 环境安装
 
@@ -333,7 +332,7 @@ app.use(history());
 
 ### 购买域名
 
-购买域名许多云服务厂商都有提供，[阿里云](https://wanwang.aliyun.com/?spm=5176.13830350.J_3207526240.34.12595aef07pNXk),[腾讯云](https://dnspod.cloud.tencent.com/)等，可以自由选择。
+购买域名许多云服务厂商都有提供，[阿里云](https://wanwang.aliyun.com/?spm=5176.13830350.J_3207526240.34.12595aef07pNXk)，[腾讯云](https://dnspod.cloud.tencent.com/)等，可以自由选择。
 
 ### 域名解析
 
@@ -359,15 +358,22 @@ app.use(history());
 
 找到 nginx 配置文件(`nginx -t`)，添加以下配置：
 
+> 通过 ps aux | grep nginx 可以查看 nginx 配置文件目录地址
+>
+> ![](./ng-config-location.png)
+
 ```nginx
+# nginx.conf
 server {
     listen 80;
     server_name www.liujie2288.com;
     location / {
-        proxy_pass http://127.0.0.1:3010;
+        proxy_pass http://127.0.0.1:3010; # 设置反向代理，消除端口号
     }
 }
 ```
+
+> 备注：这里是直接添加到 nginx.conf 配置文件中，更好的方式是创建一个 www.liujie2288.com 的文件放到在 nginx.conf 中 include 语句包含的 conf 目录中。
 
 检查配置文件是否正确：
 
@@ -473,7 +479,7 @@ pm2 deploy production revert 1
 
 ### 下载 SSL 证书
 
-点击 下载 按钮，选择对应服务器证书（这里我选择的 nginx）,同时阿里云提供了服务器安装 ssl 的详细帮助文档。。
+点击 下载 按钮，选择对应服务器证书（这里我选择的 nginx）,同时阿里云提供了服务器安装 ssl 的详细[帮助文档](https://help.aliyun.com/document_detail/98728.html?spm=0.2020520163.help.dexternal.74a6Z0XQZ0XQ7f)。
 
 ![](./ssl-download.png)
 
@@ -481,7 +487,87 @@ pm2 deploy production revert 1
 
 ![](./ssl-files.png)
 
-### 安装 SSL 证书
+### 在 Ngnix 服务器上安装 SSL 证书
+
+1. 在服务器 nginx 的 conf 目录下创建一个用于存放证书的文件夹`cert`：
+
+> 通过 ps aux | grep nginx 可以查看 nginx 配置文件目录地址
+>
+> ![](./ng-config-location.png)
+
+```bash
+# 进入nginx配置文件目录
+cd /www/server/nginx/conf
+# 创建cert文件夹
+mkdir cert
+```
+
+2. 使用 scp 命令上传下载的 ssl 证书文件
+
+```bash
+ # 使用scp上传
+ # -r 表示递归上传
+ # /Users/xmly/Downloads/9051831_www.liujie2288.com_nginx/* 表示我本地电脑的ssl证书文件夹
+ # root@47.243.206.107 表示我服务器地址，用户名为root
+ # :/www/server/nginx/conf/cert 表示上传到服务器的路径地址
+ scp -r /Users/xmly/Downloads/9051831_www.liujie2288.com_nginx/* root@47.243.206.107:/www/server/nginx/conf/cert
+```
+
+3. 编辑配置文件(nginx.conf)，添加以下配置：
+
+```nginx
+#以下属性中，以ssl开头的属性表示与证书配置有关。
+server {
+    listen 443 ssl;
+    #配置HTTPS的默认访问端口为443。
+    #如果未在此处配置HTTPS的默认访问端口，可能会造成Nginx无法启动。
+    #如果您使用Nginx 1.15.0及以上版本，请使用listen 443 ssl代替listen 443和ssl on。
+    server_name yourdomain;
+    root html;
+    index index.html index.htm;
+    ssl_certificate cert/cert-file-name.pem;
+    ssl_certificate_key cert/cert-file-name.key;
+    ssl_session_timeout 5m;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4;
+    #表示使用的加密套件的类型。
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3; #表示使用的TLS协议的类型，您需要自行评估是否配置TLSv1.1协议。
+    ssl_prefer_server_ciphers on;
+    # location / {
+    #     root html;  #Web网站程序存放目录。
+    #     index index.html index.htm;
+    # }
+    location / {
+      proxy_pass http://127.0.0.1:3010/;
+    }
+}
+```
+
+修改配置中的值：
+
+- `yourdomain`：替换成证书绑定的域名。
+- `cert/cert-file-name.pem`：替换成上传的证书文件的文件路径。
+- `cert/cert-file-name.key`：替换成上传的证书私钥文件的文件路径。
+
+4. 【可选】设置 http 请求自动跳转到 https
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain; #需要将yourdomain替换成证书绑定的域名。
+    rewrite ^(.*)$ https://$host$1; #将所有HTTP请求通过rewrite指令重定向到HTTPS。
+    #location / {
+    #    index index.html index.htm;
+    #}
+}
+```
+
+> 注意，配置后如果无法访问，请检查安全组或者其它工具（例如，宝塔面板）是否打开 443 端口
+
+5. 重启 Nginx 服务，验证网站 https 访问。
+
+```bash
+nginx -s reload
+```
 
 ## 参考链接
 
