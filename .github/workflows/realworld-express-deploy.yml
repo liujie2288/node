@@ -1,0 +1,7 @@
+name: realworld express auto deploy
+on:
+  push:
+    branches:
+      - master
+
+jobs: build

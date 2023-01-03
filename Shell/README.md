@@ -13,9 +13,14 @@ Shell 是指一种应用程序，这个应用程序提供了一个界面，用�
 - C Shell(/usr/bin/csh)
 - K Shell(/usr/bin/ksh)
 - Shell for Root(/sbin/sh)
+- Z Shell(zsh)
 - ...
 
-本文重点介绍`/bin/bash`。我们一般不区分 Bourne Shell 和 Bourne Again Shell，所以，像 `#!/bin/sh`，它同样也可以改为 `#!/bin/bash`。
+Bash 是目前最常用的 Shell。
+
+> 提示：
+> cat /etc/shells 查看系统所有安装的所有 shell
+> echo $SHELL 查看当前默认 Shell
 
 ## 第一个 Shell 脚本
 
