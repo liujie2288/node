@@ -121,6 +121,9 @@ bin  etc   lib    lost+found  mnt  proc  run   srv  tmp  var
 dev  home  lib64  media       opt  root  sbin  sys  usr
 [root@d7667cfa0a30 /]$ exit # 从容器中退回主机
 exit
+
+# 使用 exit 是退出容器
+# 使用 ctrl + p + q 是返回进入容器之前的终端，容器不会停止
 ```
 
 ### 列出所有运行的容器
@@ -150,4 +153,76 @@ docker start 容器ID   # 启动容器
 docker restart 容器ID # 重启容器
 docker stop 容器ID    # 停止当前正在运行的容器
 docker kill 容器ID    # 强制停止当前容器
+```
+
+## 其它命令
+
+### 后台启动容器
+
+```bash
+docker run -d 镜像名
+
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker run -d centos
+eeaffcd923f77def94a8154a910b9a24d02e83e2984e396853e2d726ec97c09d
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker ps
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+
+#  问题：docker ps centos并没有启动起来
+
+#  这是一个常见的坑，并不是没有启动起来，而是停止了
+#  docker使用后台运行就必须要有一个前台进程，docker发现没有挂起或者对外提供服务的应用，就会自动停止。
+```
+
+### 查看日志
+
+```bash
+docker logs 容器ID
+
+# 示例
+
+# 1. 先启动一个容器，使用shell脚本每隔1秒输出kuangshen
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker run -d centos /bin/sh -c "while true;do echo kuangshen;sleep 1;done"
+c2738f2150c93e4d3d93a6ff41dc7d69416c8509bc33d88a4d19903a6f1c7e8d
+# 2. 查看启动的容器
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS     NAMES
+c2738f2150c9   centos    "/bin/sh -c 'while t…"   4 seconds ago   Up 4 seconds             boring_rhodes
+# 3. 查看输入日志
+# -t 表示显示时间戳
+# -f 表示跟随日志输出
+# --tail string 表示输出多少条数，all表示全部
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker logs -f -t --tail all c2738f2150c9
+```
+
+### 查看容器内部进程信息
+
+```bash
+docker top 容器ID
+```
+
+### 查看容器的元数据
+
+元数据比如：容器的 ID，容器启动的传递参数，容器生成使用的镜像，容器运行状态等信息
+
+```bash
+docker inspect 容器ID
+```
+
+### 进入当前正在运行的容器
+
+我们通常使用后台的方式运行容器，当需要修改一些配置时，需要进入容器。
+
+```bash
+# 方式一
+docker exec -it 容器id shell
+# 方式二
+docker attach 容器ID
+
+# 测试
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED          STATUS          PORTS     NAMES
+c2738f2150c9   centos    "/bin/sh -c 'while t…"   24 minutes ago   Up 11 minutes             boring_rhodes
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker exec -it c2738f2150c9 /bin/bash
+[root@c2738f2150c9 /]$ ls
+bin  dev  etc  home  lib  lib64  lost+found  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
 ```
