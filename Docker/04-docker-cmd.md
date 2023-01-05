@@ -213,9 +213,9 @@ docker inspect 容器ID
 我们通常使用后台的方式运行容器，当需要修改一些配置时，需要进入容器。
 
 ```bash
-# 方式一
+# 方式一： 进入容器后开启一个新的shell，可以在里面操作（常用方式）
 docker exec -it 容器id shell
-# 方式二
+# 方式二： 进入容器正在执行的终端，不会启动新的进程
 docker attach 容器ID
 
 # 测试
@@ -225,4 +225,87 @@ c2738f2150c9   centos    "/bin/sh -c 'while t…"   24 minutes ago   Up 11 minut
 [root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker exec -it c2738f2150c9 /bin/bash
 [root@c2738f2150c9 /]$ ls
 bin  dev  etc  home  lib  lib64  lost+found  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
+```
+
+### 在容器和主机之间拷贝文件
+
+```bash
+docker cp 容器id:容器内源文件路径  目的主机路径
+docker cp 主机源文件路径 目的容器id:容器内文件路径
+
+## 测试
+#查看当前目录下文件
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ ls
+install.sh
+# 查看运行的容器
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker ps
+CONTAINER ID   IMAGE     COMMAND       CREATED         STATUS         PORTS     NAMES
+087e367d0f99   centos    "/bin/bash"   8 minutes ago   Up 2 minutes             agitated_rubin
+# 进入运行的容器
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker attach 087e367d0f99
+# 进入容器内部的home目录，并创建一个test.js文件
+[root@087e367d0f99 home]$ cd /home
+[root@087e367d0f99 home]$ ls
+[root@087e367d0f99 home]$ touch test.js
+# 创建成功后退出容器
+[root@087e367d0f99 home]$ exit
+exit
+# 查找到刚退出的容器ID
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker ps -a
+CONTAINER ID   IMAGE     COMMAND       CREATED         STATUS                     PORTS     NAMES
+087e367d0f99   centos    "/bin/bash"   9 minutes ago   Exited (0) 3 seconds ago             agitated_rubin
+# 开始从容器中拷贝文件
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker cp 087e367d0f99:/home/test.js ./test.js
+# 查看test.js文件是否被拷贝成功
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ ls
+install.sh  test.js
+
+# 拷贝现在是一个手动过程，未来可以使用 -v 卷的技术，实现容器与主机文件间的自动同步
+```
+
+## 总结
+
+![](./images/docker-cmds.webp)
+
+```bash
+  attach      Attach local standard input, output, and error  streams to a running container #当前shell下 attach连接指定运行的镜像
+  build       Build an image from a Dockerfile # 通过 Dockerfile 定制镜像
+  commit      Create a new image from a container changes # 提交当前容器为新的镜像
+  cp          Copy files/folders between a container and the local filesystem # 在容器和本机之前拷贝文件
+  create      Create a new container # 创建一个新的容器，同run，但不启动容器
+  diff        Inspect changes to files or directories on a container's filesystem # 查看docker容器的变化
+  events      Get real time events from the server # 从服务获取容器实时事件
+  exec        Run a command in a running container # 在运行中的容器上运行命令
+  export      Export a container's filesystem as a tar archive # 导出容器文件系统作为一个tar归档文件[对应import]
+  history     Show the history of an image # 展示一个镜像形成历史
+  images      List images # 列出系统当前的镜像
+  import      Import the contents from a tarball to create a filesystem image # 从tar包中导入内容创建一个文件系统镜像
+  info        Display system-wide information # 显示系统相关信息
+  inspect     Return low-level information on Docker objects #查看容器详细信息
+  kill        Kill one or more running containers # kill指定docker容器
+  load        Load an image from a tar archive or STDIN # 从一个tar包或标准输入中加载一个镜像[对应save]
+  login       Log in to a Docker registry # 注册或者登录一个docker源服务器
+  logout      Log out from a Docker registry # 从当前docker源服务器退出
+  logs        Fetch the logs of a container # 查看当前容器的日志信息
+  pause       Pause all processes within one or more containers # 暂停容器
+  port        List port mappings or a specific mapping for the container # 查看映射端口对应的容器内部源端口
+  ps          List containers # 列出端口容器列表
+  pull        Pull an image or a repository from a registry # 从docker源服务器拉取指定镜像
+  push        Push an image or a repository to a registry # 推送镜像到源服务器中
+  rename      Rename a container # 重命名容器名称
+  restart     Restart one or more containers # 重启一个或多个容器
+  rm          Remove one or more containers # 删除一个或多个容器
+  rmi         Remove one or more images # 删除一个或多个镜像
+  run         Run a command in a new container # 创建一个新容器并运行命令
+  save        Save one or more images to a tar archive (streamed to STDOUT by default) # 保存一个镜像为tar包（对应load）
+  search      Search the Docker Hub for images # 在docker hub中搜索镜像
+  start       Start one or more stopped containers # 启动一个或者多个停止的容器
+  stats       Display a live stream of container(s) resource usage statistics # 显示容器资源使用统计数据的实时流
+  stop        Stop one or more running containers # 停止一个或者多个容器
+  tag         Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE # 给源中镜像打标签
+  top         Display the running processes of a container # 实时监控容器内部运行的进程信息
+  unpause     Unpause all processes within one or more containers # 取消暂停容器
+  update      Update configuration of one or more containers #
+  version     Show the Docker version information # 查看docker版本号
+  wait        Block until one or more containers stop, then print their exit codes # 截取容器停止时的退出状态值
 ```
