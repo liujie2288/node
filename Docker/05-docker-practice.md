@@ -16,11 +16,11 @@ bitnami/nginx                                     Bitnami nginx Docker Image    
 # 运行nginx镜像
 # -d 后台运行
 # -p 设置主机与容器内部端口映射
-[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker run -d -p 6666:80 nginx
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ docker run -d -p 7701:80 nginx
 7902cd75437d2b32859661063220b78286884fb90fbbcd101a1d06884809fcb7
 
 # 主机访问nginx，测试nginx是否启动成功，成功则输出nginx欢迎页面
-[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ curl localhost:6666
+[root@iZj6c6y40ev1bo8uaiac2wZ ~]$ curl localhost:7701
 <!DOCTYPE html>
 <html>
 <head>
