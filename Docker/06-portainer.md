@@ -5,7 +5,10 @@ porainer 是一个管理 docker 的图形化工具。
 ## 安装
 
 ```bash
-docker run -d -p 8000:8000 -p 7702:9443 -p 7703:9000 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
+# 创建一个portainer存储数据的数据卷
+$ docker volume create portainer_data
+
+$ docker run -d -p 8000:8000 -p 7702:9443 -p 7703:9000 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
 
 # -d 容器在后台运行
 # -p 设置宿主机到容器的端口映射，9943是portainer的UI和API服务https接口，9000是portainer的UI和API服务http接口
