@@ -6,6 +6,10 @@
 - [docker 安装 & 卸载](./02-docker-install.md)
 - [docker 运行流程](./03-docker-run-process.md)
 - [docker 常用命令](./04-docker-cmd.md)
+- [docker 实战练习](./05-docker-practice.md)
+- [docker 可视化管理工具 - portainer](./06-portainer.md)
+- [docker 镜像理解](./07-docker-image.md)
+- [docker commit 镜像](./08-docker-commit.md)
 
 ## 参考资料
 
