@@ -102,7 +102,7 @@ docker inspect redis
 
 最终通过这样一层层的叠加（文件的叠加），形成最终的镜像。
 
-![](./images/dcoker-image-files.png)
+![](./images/docker-image-files.png)
 
 ## 参考链接
 
