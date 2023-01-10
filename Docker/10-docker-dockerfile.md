@@ -87,7 +87,7 @@ RUN yum -y install vim
 EXPOSE 8022
 
 CMD echo "--end--"
-# 容器启动后启动一个终端链接，否则centos运行完会自动退出
+# 容器启动后新建一个终端链接，否则centos容器运行完会自动退出
 CMD /bin/bash
 
 # 2. 执行构建
@@ -98,6 +98,7 @@ $ docker ps
 
 # 4. 使用新创建的镜像创建一个容器，输出--end--
 [root@iZj6c6y40ev1bo8uaiac2wZ dockerfile]$ docker run -it mycentos
+# 这里是镜像中CMD指定的输出，会在容器启动后执行
 --end--
 
 # 5. 进入之后工作目录默认就是制作镜像设置的/user/local
@@ -108,4 +109,59 @@ $ docker ps
 [root@198f00f09be2 local]$ vim
 ```
 
-## 查看
+## 查看本地镜像的变更历史
+
+通过`docker history`来查看镜像是如何一步一步做出来的。
+
+```bash
+docker history 镜像名称
+```
+
+![](./images/docker-history-image.png)
+
+![](./images/docker-history-image-nginx.png)
+
+## CMD 对比 ENTRYPOINT
+
+`CMD`和`ENTRYPOINT`都可以指定容器启动时需要运行的命令。但是
+CMD 指定的命令会被覆盖，而 ENTRYPOINT 指定的命令则会被追加。
+
+下面分别使用 CMD 和 ENTRYPOINT 来制作两个基础镜像，比对执行结果：
+
+使用 CMD 来编写简单 dockerfile：
+
+```bash
+# 1. 编写dockerfile文件
+FROM contos
+CMD ls -a
+
+# 2. 生成镜像
+$ docker build -f ./cmd-test -t cmdtest .
+
+# 3. 启动容器
+$ docker run -it cmdtest
+# 输出所有目录/文件信息
+.   .dockerenv  dev  home  lib64       media  opt   root  sbin  sys  usr
+# 4. 启动容器并追加命令-l，想要 ls -al的结果
+$ docker run -it cmdtest -l
+# 报错了，-l 替换了 CMD ls -a 命令，-l 不是命令所有报错
+docker: Error response from daemon: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: exec: "-l": executable file not found in $PATH: unknown.
+```
+
+使用 ENTRYPOINT 来编写简单 dockerfile：
+
+```bash
+# 1. 编写dockerfile文件
+FROM contos
+ENTRYPOINT ["ls","-a"]
+
+# 2. 生成镜像
+$ docker build -f ./entrypoint-test -t entrypoint-test .
+
+# 3. 启动容器
+$ docker run -it  entrypoint-test
+# 同样也输出了所有目录/文件信息
+.   .dockerenv  dev  home  lib64       media  opt   root  sbin  sys  usr
+# 4. 启动容器并追加命令-l，想要 ls -al的结果，输出结果无误
+$ docker run -it  entrypoint-test -l
+```

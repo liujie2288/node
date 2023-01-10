@@ -12,6 +12,7 @@
 - [docker commit 镜像](./08-docker-commit.md)
 - [docker 数据卷](./09-docker-volume.md)
 - [docker DockerFile](./10-docker-dockerfile.md)
+- [docker 发布镜像](./11-docker-publish.md)
 
 ## 参考资料
 
