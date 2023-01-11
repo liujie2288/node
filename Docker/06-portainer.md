@@ -8,7 +8,7 @@ porainer 是一个管理 docker 的图形化工具。
 # 创建一个portainer存储数据的数据卷
 $ docker volume create portainer_data
 
-$ docker run -d -p 8000:8000 -p 7702:9443 -p 7703:9000 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
+$ docker run -d -p 8000:8000 -p 7792:9443 -p 7791:9000 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
 
 # -d 容器在后台运行
 # -p 设置宿主机到容器的端口映射，9943是portainer的UI和API服务https接口，9000是portainer的UI和API服务http接口
@@ -21,10 +21,10 @@ $ docker run -d -p 8000:8000 -p 7702:9443 -p 7703:9000 --name portainer --restar
 
 ## 访问服务
 
-> 注意，外网 https 访问需要打开服务器 7702 端口，外网 http 访问需要打开服务器 7703 端口.
+> 注意，外网 https 访问需要打开服务器 7792 端口，外网 http 访问需要打开服务器 7791 端口.
 
 ```
-https://服务器IP:7702  # 或者 http://服务器IP:7703
+https://服务器IP:7792  # 或者 http://服务器IP:7791
 ```
 
 首次登录，需要创建管理员 admin 的密码:

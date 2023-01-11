@@ -165,3 +165,5 @@ $ docker run -it  entrypoint-test
 # 4. 启动容器并追加命令-l，想要 ls -al的结果，输出结果无误
 $ docker run -it  entrypoint-test -l
 ```
+
+> [Dockerfile CMD 命令详解](https://blog.csdn.net/xyz/article/details/118269856)

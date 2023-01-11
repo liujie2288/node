@@ -76,7 +76,7 @@ bash: ll: command not found
 
 $ cp -r webapps.dist/* webapps
 
-# 退出容器内部(ctrl + p + q)，再次访问localhost:7702发现进入了tomcat的欢迎页面了，部署完成
+# 退出容器内部(ctrl + p + q)，再次访问localhost:7703发现进入了tomcat的欢迎页面了，部署完成
 ```
 
 ## 存在的问题
