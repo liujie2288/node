@@ -59,7 +59,7 @@ ssh-keygen
 
 根据提示一路回车确认（不用输入密码，否则在发起连接时需要输入创建 ssh 时填写的密码），会自动创建公钥`id_rsa.pub`和私钥`id_rsa`文件。
 
-![](./ssh-create.png)
+![](./images/ssh-create.png)
 
 然后将上面生成的公钥文件(`id_rsa.pub`)内容追加到服务器`~/.ssh/authorized_keys`文件中。或者使用 `ssh-copy-id` 命令完成追加:
 
@@ -69,7 +69,7 @@ ssh-copy-id root@<你服务器的IP地址>
 
 完成后，再次使用 ssh 测试登录：
 
-![](./ssh-nopwd-login.png)
+![](./images/ssh-nopwd-login.png)
 
 ### 参考资料
 
@@ -96,7 +96,7 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash
 
 安装成功后的截图：
 
-![](./nvm-install.png)
+![](./images/nvm-install.png)
 
 根据提示安装成功后需要重启终端或者手动执行以下脚本：
 
@@ -110,12 +110,12 @@ export NVM_DIR="$HOME/.nvm"
 
 > 如果出现一下错误：
 >
-> ![](./nvm-install-error.png)
+> ![](./images/nvm-install-error.png)
 > 可以在[域名查询 IP](https://site.ip138.com/raw.githubusercontent.com/)的网站中查询域名对应的 ip 地址，然后添加到服务器的 hosts（/etc/hosts）文件中。
 
 上面的操作执行完后，可以在命令行输入`nvm`查看帮助文档：
 
-![](./nvm-cli-tip.png)
+![](./images/nvm-cli-tip.png)
 
 使用 nvm 安装 nodejs：
 
@@ -130,7 +130,7 @@ nvm use 16
 
 执行`node -v` 验证 node 是否安装成功。
 
-![](./nvm-install-node.png)
+![](./images/nvm-install-node.png)
 
 > 如果安装 node 比较慢，可以切换 node 镜像。[中国镜像站](https://npmmirror.com/)。
 >
@@ -250,15 +250,15 @@ yum install git
 
 这里就直接使用之前开发的 [realword-express](https://github.com/liujie2288/node) 来演示。首先克隆项目：
 
-![](./git-clone.png)
+![](./images/git-clone.png)
 
 因为项目代码存放到一个大的仓库中，这里就将它直接拷贝出来：
 
-![](./cp-project.png)
+![](./images/cp-project.png)
 
 然后安装项目依赖：
 
-![](./npm-install.png)
+![](./images/npm-install.png)
 
 安装完成后，我们使用 pm2 运行程序：
 
@@ -268,7 +268,7 @@ pm2 start app.js -i max -n realworld-express
 
 这里因为我的服务器是双核的，所以启动了 2 个实例：
 
-![](./pm2-start.png)
+![](./images/pm2-start.png)
 
 然后本地访问一下，程序是否可以正常访问到(这里我的程序是启动的在 3010 端口上的)：
 
@@ -278,13 +278,13 @@ curl http://localhost:3010
 
 如果想要在本地浏览器访问程序，需要在服务器防火墙（云服务器则是安全组）中放开 3010 端口：
 
-![](./firewall-port.png)
+![](./images/firewall-port.png)
 
 > 如果你的轻量服务器安装了宝塔面板，则需要去到宝塔面板安全- > 防火墙。放行端口 3010
 
 成功访问：
 
-![](./visit-success.png)
+![](./images/visit-success.png)
 
 ## 前端静态资源服务部署
 
@@ -342,11 +342,11 @@ app.use(history());
 
 进入域名控制台 -> 域名列表：
 
-![](./domain-list.png)
+![](./images/domain-list.png)
 
 进入解析设置，添加一条解析记录：
 
-![](./domain-resolve.png)
+![](./images/domain-resolve.png)
 
 解析成功后，我们就可以通过域名访问：[http://www.liujie2288.com:3010](http://www.liujie2288.com:3010)
 
@@ -360,7 +360,7 @@ app.use(history());
 
 > 通过 ps aux | grep nginx 可以查看 nginx 配置文件目录地址
 >
-> ![](./ng-config-location.png)
+> ![](./images/ng-config-location.png)
 
 ```nginx
 # nginx.conf
@@ -473,19 +473,19 @@ pm2 deploy production revert 1
 6. 进入下一步验证（阿里云购买的域名，系统会自动添加解析记录到域名的解析设置中，其它平台购买的域名需要手动添加一条解析记录）
 7. 提交申请，等待平台签发
 
-![](./ssl-buy.png)
-![](./ssl-create.png)
-![](./ssl-verification.png)
+![](./images/ssl-buy.png)
+![](./images/ssl-create.png)
+![](./images/ssl-verification.png)
 
 ### 下载 SSL 证书
 
 点击 下载 按钮，选择对应服务器证书（这里我选择的 nginx）,同时阿里云提供了服务器安装 ssl 的详细[帮助文档](https://help.aliyun.com/document_detail/98728.html?spm=0.2020520163.help.dexternal.74a6Z0XQZ0XQ7f)。
 
-![](./ssl-download.png)
+![](./images/ssl-download.png)
 
 下载后的文件包含了一个 key 和一个 pem 文件。
 
-![](./ssl-files.png)
+![](./images/ssl-files.png)
 
 ### 在 Ngnix 服务器上安装 SSL 证书
 
@@ -493,7 +493,7 @@ pm2 deploy production revert 1
 
 > 通过 ps aux | grep nginx 可以查看 nginx 配置文件目录地址
 >
-> ![](./ng-config-location.png)
+> ![](./images/ng-config-location.png)
 
 ```bash
 # 进入nginx配置文件目录
