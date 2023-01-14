@@ -173,6 +173,7 @@ cb749b4f9326   bridge    bridge    local
 - 启动容器时通过`--net`指定网络
 
   ```bash
+  # 默认情况下，启动容器会自动添加参数 --net bridge 使用docker0桥接模式
   $ docker run -d -it --name centos04  --net mynet centos
   ```
 
@@ -197,6 +198,54 @@ $ docker exec -it centos04 ping centos03
 $ docker exec -it centos03 ping centos04
 ```
 
-## 自定义网络之间的连通
+## 自定义网络之间容器与网络的连通
 
-实际应用中我们会有服务的集群，为了保证集群是安全和健康的，不同的集群会使用不同的网络。
+实际应用中我们会有不同服务的集群，比如 mysql 集群，redis 集群，为了保证集群是安全和健康的，不同的集群会使用不同的网络。
+
+网络与网络之间因为再不同的网段，它们之间无法直接通信，但是可以将一个网络中容器添加(`docker network connect`)另外一个网络中实现连接。连接后，容器会存在两个 ip 地址，可以理解为一个公网 ip，一个私网 ip。
+
+### 测试
+
+1. 创建一个属于 mynet 网络中 centos05 容器
+
+```bash
+$ docker run -d -it --name centos05  --net mynet centos
+```
+
+2. 尝试连接 bridge 网络中的 centos02，发现连接失败
+
+```bash
+$ docker exec centos05 ping centos02
+ping: centos02: Name or service not known
+```
+
+3. 将 centos02 添加到 mynet 网络中
+
+```bash
+$ docker network connect  mynet centos02
+```
+
+4. 再次尝试连接，发现可以连接
+
+```bash
+$ docker exec centos05 ping centos02
+```
+
+5. 分别查看 birdge 网络和 mynet 网络中的容器，发现它们的网络里面都有 centos02 这个容器，但是他们的容器的 ip 不同，就可以理解为一个公网 ip，一个私网 ip。
+
+```bash
+$ docker network inspect bridge
+$ docker network inspect mynet
+```
+
+![](./images/docker-network-inspect.png)
+
+![](./images/docker-network-inspect1.png)
+
+## 总结
+
+docker 容器之间是隔离的，默认情况下 docker 容器使用 docker0 + evth 网络桥接实现了容器的联通。我们可以通过 ip 来访问容器，但是，如果容器重启 ip 发生了变化，那么通过 ip 连接的容器将会出现找不到的情况。
+
+docker 又为我们提供了`--link`来完成容器之间的绑定通讯，让我们可以使用容器名来访问容器服务，解决了 ip 变化的问题，但是绑定是单向的，并且如果需要实现多个容器的集群，需要配置多次，比较繁琐。
+
+自定义网络很好的解决了上面的问题，使用方便，容易扩展，也是常用的使用方式。
