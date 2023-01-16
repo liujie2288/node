@@ -80,8 +80,6 @@ WORKDIR $MYPATH
 RUN cd /etc/yum.repos.d/
 RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
 RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
-RUN yum makecache
-RUN yum update -y
 RUN yum -y install vim
 
 EXPOSE 8022
@@ -91,6 +89,7 @@ CMD echo "--end--"
 CMD /bin/bash
 
 # 2. 执行构建
+# 注意末尾的 . ，它表示构建上下文，用于指定构建过程中可以访问位于上下文中的任何文件
 $ docker build -f /home/dockerfile/mycentos -t mycentos .
 
 # 3. 查看构建的镜像
@@ -167,3 +166,98 @@ $ docker run -it  entrypoint-test -l
 ```
 
 > [Dockerfile CMD 命令详解](https://blog.csdn.net/xyz/article/details/118269856)
+
+## 实战：Tomcat 镜像
+
+1. 准备镜像文件 [tomcat](https://tomcat.apache.org/download-90.cgi) 压缩包，[jdk8](https://www.oracle.com/cn/java/technologies/downloads/) 的压缩包，使用 FTP 工具上传服务器
+
+2. 编写 Dockerfile 文件，命名`Dockerfile`，`build` 会自动寻找这个文件，就不需要`-f`来指定了。
+
+```docker
+# 基于centos镜像扩展
+FROM centos
+# 维护者填自己
+MAINTAINER jay.liu<liujie_2288@qq.com>
+# 复制当前目录下的镜像说明文件【可选】
+COPY readme.txt /usr/local/
+
+# 添加压缩包，该ADD命令会自动解压
+# 将压缩包放到和Dockerfile相同的目录中
+ADD apache-tomcat-9.0.71.tar.gz  /usr/local
+ADD jdk-8u351-linux-x64.tar.gz /usr/local
+
+# 使用yum安装vim工具包
+# centos官方停止维护的原因，直接安装会报错，需要进行一些配置：https://blog.csdn.net/weixin_43252521/article/details/124409151
+RUN cd /etc/yum.repos.d/
+RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+RUN yum -y install vim
+
+# 设置环境变量
+ENV MYWORKDIR /usr/local
+WORKDIR $MYWORKDIR
+
+# 设置jdk目录
+ENV JAVA_HOME /usr/local/jdk1.8.0_351
+# 设置java工具包目录
+ENV CLASSPATTH $JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+
+# 设置tomcat目录
+ENV CATALINA_HOME /usr/local/apache-tomcat-9.0.71
+ENV CATALINA_BASH /usr/local/apache-tomcat-9.0.71
+
+# 添加到环境变量中
+ENV PATH $PATH:$JAVA_HOME/bin:$CATALINA_HOME/bin:CATALINA_HOME/lib
+
+# 暴露端口
+EXPOSE 8080
+
+# 容器启动时，启动tomcat，输出启动日志
+CMD /usr/local/apache-tomcat-9.0.71/bin/startup.sh && tail -F /usr/local/apache-tomcat-9.0.71/bin/catalina.out
+```
+
+3. 构建镜像，并查看
+
+```bash
+$ docker build -t diytomcat .
+$ docker ps
+```
+
+4. 使用构建的镜像创建新的容器
+
+```bash
+$ docker run -d -p 7765:8080 --name my-diy-tomcat -v /home/www/tomcat:/usr/local/apache-tomcat-9.0.71/webapps -v /home/www/tomcat/logs:/usr/local/apache-tomcat-9.0.71/logs diytomcat
+```
+
+5. 使用 服务器 IP + 端口，访问测试
+6. 进入宿主机/home/www/tomcat/test 目录发布自己的项目
+
+```bash
+# 进入宿主机/home/www/tomcat目录下，创建项目目录test
+$ cd /home/www/tomcat && mkdir test && cd test
+# 在test目录下，创建项目的描述文件
+$ mkdir WEB-INF
+$ cd WEB_INFO && vim web.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+         http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+         version="3.1">
+
+</web-app>
+
+# 在test目录下，创建一个测试页面 index.jsp
+
+<html>
+<head><title>Hello World</title></head>
+<body>
+Hello World!<br/>
+<%
+System.out.println("-- my test web logs --");
+%>
+</body>
+</html>
+```
+
+7.  再次通过 IP+端口+/test 来访问项目，并查看输出日志`cat /home/www/tomcat/logs/catalina.out`

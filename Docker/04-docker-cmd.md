@@ -110,7 +110,8 @@ docker run [可选参数] image
     -p 容器端口
 -P             随机指定端口
 -it            使用交互方式运行，进入容器查看内容
-
+--rm           停止运行后，自动删除容器文件
+--env          向容器进程中传入环境变量
 # 测试
 
 $ docker run -it centos
@@ -137,6 +138,8 @@ docker ps -a
 docker ps -n=1
 # 只显示容器的编号
 docker ps -q
+# 查看已经退出了的容器id列表
+docker ps --filter status=exited -aq
 ```
 
 ### 删除容器
@@ -144,6 +147,7 @@ docker ps -q
 ```bash
 docker rm  容器ID  #删除指定的容器
 docker rm $(docker ps -aq) # 删除所有的容器
+docker rm $(docker ps --filter status=exited -aq) # 删除所有已经退出了的容器
 ```
 
 ### 启动和停止容器
