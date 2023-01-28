@@ -1,0 +1,40 @@
+# 指定 docker-compose.dev.yml 文件的版本
+version: '3.8'
+
+# 指定多个服务容器
+services:
+  # mongo服务容器
+  mongo:
+    # 设置容器基础镜像
+    image: mongo
+    # 设置容器端口映射
+    ports:
+      - 7733:27017
+    # 设置容器数据卷挂载
+    volumes:
+      - mongodb:/data/db
+      - mongodb_config:/data/configdb
+
+  # 设置node服务容器
+  node:
+    build: 
+      context: .
+    ports:
+      # 暴露node-docker服务接口 
+      - 3310:7744
+      # 暴露node调试接口
+      - 3311:9229
+    # 设置环境变量
+    environment:
+      - SERVER_PORT=7744
+    # 设置容器启动命令
+    command: npm run debug
+    # 设置本地开发目录与容器内部/app目录关联映射
+    volumes:
+      - ./:/app
+
+# 创建数据卷
+volumes:
+  mongodb:
+  mongodb_config:
+
