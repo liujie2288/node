@@ -2,9 +2,14 @@ const express = require("express");
 const db = require("./db");
 
 const app = express();
+const port = process.env.SERVER_PORT || 7710;
 
 app.use(express.json());
 app.use(express.urlencoded());
+
+app.get("/", function (req, res) {
+  res.end("hello world!");
+});
 
 app.post("/add", async function (req, res) {
   const collection = db.db.collection("notes");
@@ -18,6 +23,6 @@ app.get("/list", async function (req, res) {
   res.send(doc);
 });
 
-app.listen(process.env.SERVER_PORT, function () {
-  console.log("server at http://localhost:7744");
+app.listen(port, function () {
+  console.log(`server at http://localhost:${port}`);
 });
