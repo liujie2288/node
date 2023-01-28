@@ -28,7 +28,7 @@ $ docker compose stop
 新建`docker-compose.yml`文件，编写以下内容：
 
 ```yaml
-#指定 docker-compose.yml 文件的版本
+#指定 docker compose 规范的版本
 version: "3.1"
 
 # 定义所有的 service 信息, services 下面的第一级别的 key 既是一个 service 的名称

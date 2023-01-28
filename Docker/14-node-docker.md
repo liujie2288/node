@@ -2,7 +2,7 @@
 
 > 本教程来自于[官方教程](https://docs.docker.com/language/nodejs/)，以下将以更为精简的笔记来完成对内容的记录和学习。其目的是为了：
 >
-> 1. 巩固对 docker 的学习；
+> 1. 串联知识点、巩固对 docker 的学习；
 > 2. 今后可以通过这篇文章快速回顾 docker 知识要点
 
 文章主要内容：
@@ -25,21 +25,22 @@
 const express = require("express");
 
 const app = express();
+const port = process.env.SERVER_PORT || 7710;
 
 app.use(function (req, res) {
   res.send("hello world");
 });
 
-app.listen(process.env.SERVER_PORT, function () {
-  console.log(`server at http://localhost:${process.env.SERVER_PORT}`);
+app.listen(port, function () {
+  console.log(`server at http://localhost:${port}`);
 });
 ```
 
 ### 创建 dockerfile
 
 ```docker
-# 基于node12.18.1版本作为基础镜像，更多信息参考：https://docs.docker.com/build/building/base-images/
-FROM node:12.18.1
+# 基于node最新版本作为基础镜像，更多信息参考：https://docs.docker.com/build/building/base-images/
+FROM node
 # 设定应用程序运行的环境变量
 ENV NODE_ENV production
 # 设置容器内部工作目录，方便进入容器直接执行其他命令，而不需要每次都cd到该目录中
@@ -47,7 +48,7 @@ WORKDIR /app
 # 将源代码拷贝到镜像中（如果文件是压缩包会自动解压）
 COPY . .
 # 安装生产环境依赖
-RUN npm install --production
+RUN npm install
 # 容器启动时，自动启动node服务
 CMD node server.js
 ```
@@ -156,32 +157,49 @@ $ docker rm -f $(docker ps -aq)
 
 ### 创建 Mongodb 服务容器
 
-首先创建 Mongodb 数据卷和 Mongodb 配置卷
+创建 Mongodb 数据卷和 Mongodb 配置卷，独立与容器管理数据（容器删除数据仍然存在）。
 
 ```bash
 $ docker volume create mongodb
 $ docker volume create mongodb_config
 ```
 
-启动 Mongodb 容器，配置数据卷映射，并对外暴露 7733 端口。
+创建一个网络，方便应用程序和数据库通讯，使应用程序可以通过容器名称连接数据库。
 
 ```bash
-$ docker run -d -v mongodb:/data/db -v mongodb_config:/data/configdb -p 7733:27017 --name mongodb mongo
+$ docker network create mongodb
 ```
 
-### 修改应用程序
+启动 Mongodb 容器，配置数据卷映射，配置容器网络环境，并对外暴露 7733 端口。
+
+```bash
+# -d 后台启动
+# -v 配置数据卷映射
+# -p 配置端口映射
+# --name 设置容器名称
+# --network 指定容器网络环境
+$ docker run -d -v mongodb:/data/db -v mongodb_config:/data/configdb -p 7733:27017 --network mongodb --name mongodb mongo
+```
+
+### 完善应用程序
 
 添加 db 模块：
 
 ```js
 const { MongoClient } = require("mongodb");
 
+// 优先使用环境变量提供的数据库连接字符串
+// mongodb:27017中的mongodb代表的启动的mongodb容器的名称（--name 指定的容器名称）
+// 当在同一个网络中时，可以直接通过容器的名称来访问服务，防止通过容器ip访问时ip变化问题
+const MongoClientUrl =
+  process.env.MONGO_CLIENT_URL || "mongodb://mongodb:27017";
+
 let client,
   db,
   obj = {};
 
 async function main() {
-  client = new MongoClient("mongodb://localhost:7733");
+  client = new MongoClient(MongoClientUrl);
   await client.connect();
   console.log("Connected successfully to server");
   db = client.db("node-docker");
@@ -212,9 +230,15 @@ const express = require("express");
 const db = require("./db");
 
 const app = express();
+// 优先从环境变量中获取
+const port = process.env.SERVER_PORT || 7744;
 
 app.use(express.json());
 app.use(express.urlencoded());
+
+app.get("/", function (req, res) {
+  res.end("hello world!");
+});
 
 app.post("/add", async function (req, res) {
   const collection = db.db.collection("notes");
@@ -228,18 +252,18 @@ app.get("/list", async function (req, res) {
   res.send(doc);
 });
 
-app.listen(7744, function () {
-  console.log("server at http://localhost:7744");
+app.listen(port, function () {
+  console.log(`server at http://localhost:${port}`);
 });
 ```
 
-### 重新构建并重启 node-docker 镜像
+### 重新构建镜像并重启容器
 
 ```bash
 # 重新构建node-docker镜像
 $ docker build --tag node-docker .
 # 重新运行node-docker镜像
-$ docker run -d -p 3310:7744 --name rest-node-docker node-docker
+$ docker run -d -p 3310:7744 -e SERVER_PORT=7744 --network mongodb  --name rest-node-docker node-docker
 ```
 
 测试访问：
@@ -248,7 +272,7 @@ $ docker run -d -p 3310:7744 --name rest-node-docker node-docker
 
 ```bash
 $ curl --request POST \
-  --url http://localhost:7744/add \
+  --url http://localhost:3310/add \
   --header 'content-type: application/json' \
   --data '{"title": "this is a note", "content": "this is a note that I wanted to take while I was working on writing a blog post."}'
 ```
@@ -256,15 +280,106 @@ $ curl --request POST \
 2. 查询插入的数据
 
 ```bash
-$ curl http://localhost:7744/list
+$ curl http://localhost:3310/list
 ```
 
 ### 使用 compose 同时启动多个容器
 
 上面的应用我们需要先启动 mongodb 服务然后再启动 node 服务，为了本地开发方便，下面将使用 compose 来同时启动多个容器服务。
 
-新建`docker-compose.dev.yml`文件，添加以下内容：
+新建`docker-compose.dev.yml`描述文件，添加以下内容：
 
 ```yml
+# 指定 docker compose 规范的版本
+version: "3.8"
 
+# 指定多个服务容器
+services:
+  # mongo服务容器
+  mongo:
+    # 设置容器基础镜像
+    image: mongo
+    # 设置容器端口映射
+    ports:
+      - 7733:27017
+    # 设置容器数据卷挂载
+    volumes:
+      - mongodb:/data/db
+      - mongodb_config:/data/configdb
+
+  # 设置node服务容器
+  node:
+    # 设置node服务容器从源码构建镜像，指定构建的上下文为当前文件所在的文件夹
+    build:
+      context: .
+    ports:
+      # 暴露node-docker服务接口
+      - 3310:7744
+      # 暴露node调试接口
+      - 3311:9229
+    # 设置环境变量
+    environment:
+      - SERVER_PORT=7744
+      # 这里mongo就代表的是上面mongo服务名称，使用服务名称解决了容器ip变化问题（在docker-net.md有详细说明）
+      - MONGO_CLIENT_URL=mongodb://mongo:27017
+    # 设置本地开发目录与容器内部/app目录关联映射，方便本地修改后同步到容器内部
+    volumes:
+      - ./:/app
+      - ./node_modules:/app/node_modules
+
+# 创建数据卷
+volumes:
+  mongodb:
+  mongodb_config:
 ```
+
+compose 文件在启动时会自动创建一个网络(可通过 `docker network ls` 查看)，并且会自动解析服务(service)名称，方便我们在容器之间通讯时可以直接使用该名称。（例如，直接使用 mongo 名称来连接服务 `mongodb://mongo:27017`）
+
+启动程序：
+
+```bash
+# docker compose up 创建并启动容器
+# -f 指定compose文件，不提供默认查找compose.yml docker-compose.yml文件
+# --build 启动之前构建镜像
+# 更多命令查看docker compose --help 和 docker compose up --help
+$ docker compose -f docker-compose.dev.yml up --build
+```
+
+访问测试：http://localhost:3310
+
+### node 调试
+
+为了方便开发 node 应用程序，我们可以安装`nodemon`：
+
+```bash
+$ npm install nodemon
+```
+
+在 package.json 文件中添加调试启动脚本:
+
+```json
+{
+  // ...
+  "scripts": {
+    "debug": "nodemon --inspect=0.0.0.0:9229 server.js"
+  }
+  // ...
+}
+```
+
+在 compose 文件 node 服务中添加容器启动脚本
+
+```yaml
+servers:
+  node:
+    # ...
+
+    # 设置容器启动命令，以调试模式运行node服务
+    command: npm run debug
+
+    # ...
+```
+
+重启服务后，打开浏览器输入：`about:inspect`，然后创建一个`http://localhost:3311`的调试监听连接，开始调试。
+
+> node 调试详细内容请参考[官方文档](https://nodejs.org/en/docs/guides/debugging-getting-started/)
