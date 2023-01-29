@@ -6,6 +6,8 @@ FROM node as base
 WORKDIR /app
 # 将源代码拷贝到镜像中（如果文件是压缩包会自动解压）
 COPY . .
+# 输出当前目录
+RUN ls
 
 # 测试阶段
 FROM base as test
