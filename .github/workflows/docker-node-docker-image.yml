@@ -27,8 +27,8 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v3
         with:
-          context: .
-          file: ./Docker/node-docker/Dockerfile
+          context: ./Docker/node-docker
+          file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/node-docker:latest
 
