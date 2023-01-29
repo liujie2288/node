@@ -10,7 +10,7 @@
 - 构建镜像
 - 运行容器
 - 开发一个应用程序
-- 运行测试
+- 运行单元测试
 - 配置 CI/CD
 - 部署应用
 
@@ -41,8 +41,6 @@ app.listen(port, function () {
 ```docker
 # 基于node最新版本作为基础镜像，更多信息参考：https://docs.docker.com/build/building/base-images/
 FROM node
-# 设定应用程序运行的环境变量
-ENV NODE_ENV production
 # 设置容器内部工作目录，方便进入容器直接执行其他命令，而不需要每次都cd到该目录中
 WORKDIR /app
 # 将源代码拷贝到镜像中（如果文件是压缩包会自动解压）
@@ -352,7 +350,7 @@ $ docker compose -f docker-compose.dev.yml up --build
 为了方便开发 node 应用程序，我们可以安装`nodemon`：
 
 ```bash
-$ npm install nodemon
+$ npm install --save-dev nodemon
 ```
 
 在 package.json 文件中添加调试启动脚本:
@@ -383,3 +381,129 @@ servers:
 重启服务后，打开浏览器输入：`about:inspect`，然后创建一个`http://localhost:3311`的调试监听连接，开始调试。
 
 > node 调试详细内容请参考[官方文档](https://nodejs.org/en/docs/guides/debugging-getting-started/)
+
+## 运行单元测试
+
+### 本地运行测试
+
+安装 js 测试框架 mocha:
+
+```bash
+$ npm install --save-dev mocha
+```
+
+创建测试 `test` 文件夹，添加一下测试文件 `test.js`:
+
+```js
+// test/test.js
+var assert = require("assert");
+describe("Array", function () {
+  describe("#indexOf()", function () {
+    it("should return -1 when the value is not present", function () {
+      assert.equal([1, 2, 3].indexOf(4), -1);
+    });
+  });
+});
+```
+
+在 package.json 中添加测试脚本:
+
+```json
+{
+  "scripts": {
+    // ...
+    "test": "mocha ./**/*.js"
+  }
+}
+```
+
+运行测试：
+
+```bash
+$ npm run test
+```
+
+### 构建测试
+
+除了通过命令行运行测试外，还可以在构建镜像时运行测试，修改`Dockerfile`文件：
+
+```docker
+# 基于node最新版本作为基础镜像，更多信息参考：https://docs.docker.com/build/building/base-images/
+# FROM代表一个构建阶段，一个Dockerfile文件中可以存在多个构建阶段
+# as 给当前阶段打一个标签，方便其它阶段引用
+FROM node as base
+# 设置容器内部工作目录，方便进入容器直接执行其他命令，而不需要每次都cd到该目录中
+WORKDIR /app
+# 将源代码拷贝到镜像中（如果文件是压缩包会自动解压）
+COPY . .
+
+# 测试阶段
+FROM base as test
+# 安装环境依赖
+RUN npm ci
+# 运行测试
+RUN npm run test
+
+# 生产阶段
+FROM base as prod
+# 安装生产依赖
+RUN npm ci --production
+# 容器启动时，自动启动node服务
+CMD node server.js
+```
+
+执行构建测试：
+
+```bash
+$ docker build -t node-docker --target test .
+```
+
+## 配置 CI/CD
+
+使用 github Actions 完成镜像的构建与发布。
+
+> 参考地址：https://docs.docker.com/language/nodejs/configure-ci-cd/
+
+1. 在 github 创建一个仓库
+2. 在仓库的 settings 面板中添加 dockerhub 的用户名以及令牌（需要前往 docker hub 个人中心申请）
+   ![](./images/node-docker-secret.png)
+3. 在仓库的 actions 面板中创建一个工作流文件。
+
+   ```yaml
+   # 当前工作流名称
+   name: Docker Image CI
+
+   # 指定此工作流应在列表中分支的每个推送事件上运行。
+   on:
+     push:
+       branches: ["main"]
+
+   # 工作流运行时的任务列表
+   jobs:
+     # 具体的每一个任务
+     build:
+       # 任务运行的的机器类型
+       runs-on:
+         ubuntu-latest
+         # 任务执行的步骤
+       steps:
+         - uses: actions/checkout@v3
+           name: Checkout
+         - uses: docker/login-action@v2
+           name: Login to Docker Hub
+           with:
+             #  上面添加的密钥
+             username: ${{ secrets.DOCKERHUB_USERNAME }}
+             password: ${{ secrets.DOCKERHUB_TOKEN }}
+         - name: Set up Docker Buildx
+           uses: docker/setup-buildx-action@v2
+         - name: Build and push
+           uses: docker/build-push-action@v3
+           with:
+             # 这里指定docker构建上下文
+             context: ./Docker/node-docker
+             # 指定构建的dockerfile文件位置
+             file: ./Docker/node-docker/Dockerfile
+             push: true
+             tags: ${{ secrets.DOCKERHUB_USERNAME }}/node-docker:latest
+   ```

@@ -1,34 +1,36 @@
+# 当前工作流名称
 name: Docker Image CI
 
+# 指定此工作流应在列表中分支的每个推送事件上运行。
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
+# 工作流运行时的任务列表
 jobs:
-
+  # 具体的每一个任务
   build:
-
-    runs-on: ubuntu-latest
-
+    # 任务运行的的机器类型
+    runs-on:
+      ubuntu-latest
+      # 任务执行的步骤
     steps:
-      - 
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         name: Checkout
-      -
-        uses: docker/login-action@v2
+      - uses: docker/login-action@v2
         name: Login to Docker Hub
         with:
+          #  上面添加的密钥
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      -
-        name: Build and push
+      - name: Build and push
         uses: docker/build-push-action@v3
         with:
+          # 这里指定docker构建上下文
           context: ./Docker/node-docker
+          # 指定构建的dockerfile文件位置
           file: ./Docker/node-docker/Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/node-docker:latest
-
