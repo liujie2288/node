@@ -55,7 +55,7 @@ CMD ["/bin/bash"]
 - `ADD`： 添加内容。比如要让镜像具备 nginx 功能，就需要先 add nginx 压缩包
 - `WORKDIR`：设置镜像的工作目录
 - `VOLUME`：设置容器的数据卷挂载目录
-- `EXPOST`：指定对外的端口
+- `EXPOSE`：指定对外的端口
 - `CMD`：指定这个容器启动时需要运行的命令，如果有存在多个 CMD，只有最后一个 CMD 生效
 - `ENTRYPOINT`：指定这个容器启动时需要运行的命令，可以追加命令
 - `ONBUILD`：当构建一个被继承 DockerFile 时，就会运行这个指令
