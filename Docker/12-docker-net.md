@@ -47,7 +47,7 @@ PING 172.17.0.7 (172.17.0.7) 56(84) bytes of data.
 
 ### 验证容器之间的通讯
 
-新建一个 centos02 的容器，在容器内尝试 ping centos01 IP 地址。
+新建一个 centos02 的容器，在容器内尝试 ping centos01 IP 地址，发现可以ping通。
 
 ```bash
 $ docker run -d -it --name centos02 centos
